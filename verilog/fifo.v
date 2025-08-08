@@ -15,7 +15,7 @@ module fifo #(
 
     // func code
     always (posedge clk and posedge rst) begin
-        if(rst) begin
+        if(rst) begin   //reset all control signals
             wptr <= 0;  
             rptr <= 0;
             wrote <= 0;
