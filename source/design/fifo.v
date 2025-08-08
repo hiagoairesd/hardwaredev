@@ -17,7 +17,7 @@ module fifo #(
     reg                 wrote;              //control var
 
     // func code
-    always (posedge clk and posedge rst) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin   //reset all control signals
             wptr  <= {(AWIDTH){1'b0}};  
             rptr  <= {(AWIDTH){1'b0}};
