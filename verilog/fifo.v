@@ -2,13 +2,16 @@ module fifo #(
     parameter AWIDTH = 5,
     parameter DWIDTH = 8
 ) (
-    input                       clk, rst, wr_en, rd_en,
+    input                       clk, 
+    input                       rst, 
+    input                       wr_en, 
+    input                       rd_en,
     input       [DWIDTH-1:0]    data_in,
     output                      full, empty,
     output  reg [DWIDTH-1:0]    data_out
 );
-    localparam depth = 2 ** AWIDTH;
-    reg [DWIDTH-1:0]    memory [0:depth-1]; //register array
+    localparam DEPTH = 2 ** AWIDTH;
+    reg [DWIDTH-1:0]    memory [0:DEPTH-1]; //register array
     reg [AWIDTH-1:0]    wptr;               //write pointer
     reg [AWIDTH-1:0]    rptr;               //read pointer
     reg                 wrote;              //control var
@@ -16,9 +19,9 @@ module fifo #(
     // func code
     always (posedge clk and posedge rst) begin
         if(rst) begin   //reset all control signals
-            wptr <= 0;  
-            rptr <= 0;
-            wrote <= 0;
+            wptr  <= {(AWIDTH){1'b0}};  
+            rptr  <= {(AWIDTH){1'b0}};
+            wrote <= 1'b0;
         end else begin
             if (rd_en && !empty) begin
                 data_out <= memory[rptr];   //load data from the current rptr location to data_out
