@@ -3,3 +3,10 @@ CVA Silicon Technologies
     Hardware Development Repository 
 --------------------------------------------------
 
+Git Repository Directory Structure:
+
+   |-simu
+   |-source
+   |---design
+   |---verif
+   |-synt
