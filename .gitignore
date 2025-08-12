@@ -1,0 +1,4 @@
+xrun.*
+xcelium.d*
+
+*.log
