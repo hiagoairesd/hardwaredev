@@ -2,6 +2,7 @@
 design_path="../source/design/"
 verif_path="../source/verif/"
 
+dut="memory"
 dut=$1
 
 # 1. Compilar
@@ -22,6 +23,4 @@ xrun -elaborate ../source/verif/fifo_test.sv -access +rwc
 echo "################################################"
 echo "### Simulation starting..."
 echo "################################################"
-xrun -R -input ./simu.tcldut
-
-echo this is the dut $dut
+xrun -R -input ./simu.tcl
