@@ -55,6 +55,11 @@ module fifo_test;
         repeat (DEPTH+1) @(negedge clk);    // rd_en is asserted and kept high for (2** AWIDTH+1) clocks
         $stop;                              // for reading of FIFO, empty signal can be seen high in the last clock pause
     end
+
+    initial begin
+        $dumpfile("wave.vcd");
+        $dumpvars(0, fifo_test);
+    end
 always #10 clk =~clk;
 endmodule
 
