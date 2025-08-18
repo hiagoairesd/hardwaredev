@@ -2,3 +2,5 @@ xrun.*
 xcelium.d*
 
 *.log
+*.out
+*.vcd
