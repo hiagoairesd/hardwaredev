@@ -4,9 +4,14 @@ CVA Silicon Technologies
 --------------------------------------------------
 
 Git Repository Directory Structure:
-
    |-simu
    |-source
    |---design
    |---verif
-   |-synt
+   |-synth
+
+Dependencies
+- Icarus Verilog for simulation 
+- GTKWave for wave debug
+- Yosis for logic synthesis
+- SKY130 PDK 

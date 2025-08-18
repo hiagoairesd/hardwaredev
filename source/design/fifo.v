@@ -2,13 +2,14 @@ module fifo #(
     parameter AWIDTH = 5,
     parameter DWIDTH = 8
 ) (
-    input                       clk, 
-    input                       rst, 
-    input                       wr_en, 
-    input                       rd_en,
-    input       [DWIDTH-1:0]    data_in,
-    output                      full, empty,
-    output  reg [DWIDTH-1:0]    data_out
+    input   wire                 clk, 
+    input   wire                 rst, 
+    input   wire                 wr_en, 
+    input   wire                 rd_en,
+    input   wire [DWIDTH-1:0]    data_in,
+    output  wire                 full, 
+    output  wire                 empty, 
+    output  reg  [DWIDTH-1:0]    data_out
 );
     localparam DEPTH = 2 ** AWIDTH;
     reg [DWIDTH-1:0]    memory [0:DEPTH-1]; //register array

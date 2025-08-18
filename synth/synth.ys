@@ -1,0 +1,46 @@
+##############################################################
+# Prepare for synthesis
+##############################################################
+# Read the Verilog file
+read_verilog ../source/design/fifo.v
+
+# Elaborate top module
+hierarchy -top fifo
+
+# Perform generic synthesis
+synth -top fifo
+
+##############################################################
+# Synthesize with generic gates (optional)
+##############################################################
+# abc -g AND,OR,NAND,XOR
+# 
+# # Show the final netlist (opens a simple viewer in terminal)
+# show
+# 
+# # Write synthesized netlist to Verilog
+# write_verilog fifo_synth.v
+# 
+# # Print statistics
+# stat
+
+##############################################################
+# Synthesize with SKY130 PDK
+##############################################################
+# Map to SKY130 PDK
+abc -liberty ~/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Show the final netlist (opens a simple viewer in terminal)
+show
+
+# Write synthesized netlist to Verilog
+write_verilog fifo_synth.v
+
+# Checks for common problems in the design
+check
+
+# Performs static timing analysis
+sta
+
+# Print statistics
+stat
