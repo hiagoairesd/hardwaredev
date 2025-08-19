@@ -4,15 +4,19 @@ CVA Silicon Technologies
 --------------------------------------------------
 
 Git Repository Directory Structure:
-
    |-simu
    |-source
    |---design
    |---verif
-   |-synt
+   |-synth
 
+Important Commands
+- genus -f synth_genus.tcl -execute "set design_name fifo"   // synthesis xcelium
+- ./simu.sh fifo                                             // simulation xcelium
+- ./simu_icarus.sh fifo                                      // simulation icarus
 
-genus -f synth_genus.tcl -execute "set design_name fifo"   // synthesis xcelium
-./simu.sh fifo                                      // simulation xcelium
-
-./simu_icarus.sh fifo                               // simulation icarus
+Dependencies
+- Icarus Verilog for simulation 
+- GTKWave for wave debug
+- Yosis for logic synthesis
+- SKY130 PDK 
