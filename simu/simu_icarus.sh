@@ -2,18 +2,20 @@
 design_path="../source/design/"
 verif_path="../source/verif/"
 
-dut="fifo"
+dut=${1:-fifo}
 
 echo "################################################"
-echo "### Preparing Simulation"
+echo "###   Running Compilation and Elaboration..."
 echo "################################################"
-iverilog -o sim.out \
-$design_path/fifo.v \
-$verif_path/fifo_test.sv
+
+iverilog -o ${dut}.out \
+$design_path/$dut.v \
+$verif_path/${dut}_test.sv
+
 
 echo "################################################"
-echo "### Running Simulation..."
+echo "###   Running Simulation..."
 echo "################################################"
-vvp sim.out
+vvp ${dut}.out
 
 echo DONE!

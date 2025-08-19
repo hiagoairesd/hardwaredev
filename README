@@ -10,3 +10,9 @@ Git Repository Directory Structure:
    |---design
    |---verif
    |-synt
+
+
+genus -f synth_genus.tcl -execute "set design_name fifo"   // synthesis xcelium
+./simu.sh fifo                                      // simulation xcelium
+
+./simu_icarus.sh fifo                               // simulation icarus

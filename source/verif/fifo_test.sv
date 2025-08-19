@@ -53,7 +53,7 @@ module fifo_test;
             rd_en = 1;
         end
         repeat (DEPTH+1) @(negedge clk);    // rd_en is asserted and kept high for (2** AWIDTH+1) clocks
-        $stop;                              // for reading of FIFO, empty signal can be seen high in the last clock pause
+        $finish;                            // for reading of FIFO, empty signal can be seen high in the last clock pause
     end
 
     initial begin
