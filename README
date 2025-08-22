@@ -11,9 +11,14 @@ Git Repository Directory Structure:
    |-synth
 
 Important Commands
-- genus -f synth_genus.tcl -execute "set design_name fifo"   // synthesis xcelium
-- ./simu.sh fifo                                             // simulation xcelium
-- ./simu_icarus.sh fifo                                      // simulation icarus
+- ./simu.sh fifo                                             // For simulation using xcelium
+- genus -f synth_genus.tcl -execute "set design_name fifo"   // For synthesis using xcelium
+
+- ./simu_icarus.sh fifo                                      // For simulation using icarus
+- chmod +x run_synth.sh                                      // For synthesis
+- ./run_synth.sh fifo                                        // using
+- ./run_synth.sh memory                                      // yosys
+
 
 Dependencies
 - Icarus Verilog for simulation 
