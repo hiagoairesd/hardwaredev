@@ -9,7 +9,7 @@ echo "###   Running Compilation and Elaboration..."
 echo "################################################"
 
 iverilog -o ${dut}.out \
-$design_path/$dut.v \
+$design_path/${dut}.v \
 $verif_path/${dut}_test.sv
 
 
