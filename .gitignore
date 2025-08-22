@@ -4,3 +4,5 @@ xcelium.d*
 *.log
 *.out
 *.vcd
+
+*_synth.v

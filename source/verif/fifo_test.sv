@@ -57,7 +57,7 @@ module fifo_test;
     end
 
     initial begin
-        $dumpfile("wave.vcd");
+        $dumpfile("fifo.vcd");
         $dumpvars(0, fifo_test);
     end
 always #10 clk =~clk;
