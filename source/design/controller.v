@@ -1,16 +1,16 @@
 module controller (    
-    input   [2:0]   opcode,
-    input   [2:0]   phase,
-    input           zero,
-    output  reg     sel,
-                    rd,
-                    ld_ir,
-                    halt,
-                    inc_pc,
-                    ld_ac,
-                    ld_pc,
-                    wr,
-                    data_e
+    input   wire [2:0]   opcode,
+    input   wire [2:0]   phase,
+    input   wire         zero,
+    output  reg          sel,
+                         rd,
+                         ld_ir,
+                         halt,
+                         inc_pc,
+                         ld_ac,
+                         ld_pc,
+                         wr,
+                         data_e
 );
 
 wire  aluop, skz, jmp, sto, hlt;

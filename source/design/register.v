@@ -1,11 +1,11 @@
 module register #(
     parameter WIDTH = 8
 ) (
-    input       [WIDTH-1:0]   data_in,
-    input                     load,
-    input                     clk,
-    input                     rst,
-    output  reg [WIDTH-1:0]   data_out
+    input  wire[WIDTH-1:0]   data_in,
+    input  wire              load,
+    input  wire              clk,
+    input  wire              rst,
+    output reg [WIDTH-1:0]   data_out
 );
 
 always @(posedge clk) begin

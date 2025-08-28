@@ -1,8 +1,8 @@
 module converter_onehot_bin #(
     parameter WIDTH = 16
 ) (
-    input       [WIDTH-1:0]         onehot_in,
-    output  reg [$clog2(WIDTH)-1:0] bin_out
+    input   wire [WIDTH-1:0]         onehot_in,
+    output  reg  [$clog2(WIDTH)-1:0] bin_out
 );
     integer i;
     always @* begin

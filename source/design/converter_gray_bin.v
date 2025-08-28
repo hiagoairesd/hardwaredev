@@ -1,8 +1,8 @@
 module converter_bin_gray #(
     parameter WIDTH = 4
 ) (
-    input   [WIDTH-1:0] gray_in,
-    output  [WIDTH-1:0] bin_out
+    input  wire [WIDTH-1:0] gray_in,
+    output reg  [WIDTH-1:0] bin_out
 );
     integer i;
     
