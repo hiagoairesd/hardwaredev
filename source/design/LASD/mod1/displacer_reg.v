@@ -6,7 +6,7 @@ module displacer_reg #(
     input wire             load,
     input wire             shift,
     input wire [WIDTH-1:0] data_in,
-    output reg            carry,
+    output reg             carry,
     output reg [WIDTH-1:0] data_out
 );
 
