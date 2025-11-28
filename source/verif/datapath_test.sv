@@ -49,8 +49,8 @@ module datapath_test();
     end
 
     initial begin
-        $monitor("wr= %b \t wraddr= %b \t rda1= %b \t rda2= %b \t data_in= %b \n data_out1= %b \t data_out2= %b",
-                wr, wraddr, rda1, rda2, data_in, data_out1, data_out2);
+        $monitor("time: %0d \t rst= %b \n wr= %b \t wraddr= %b \t rda1= %b \t rda2= %b \t data_in= %b \n data_out1= %b \t data_out2= %b",
+                $time, reset, wr, wraddr, rda1, rda2, data_in, data_out1, data_out2);
     end
 
     initial begin
