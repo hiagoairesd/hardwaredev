@@ -17,6 +17,6 @@ module memory #(
     end
 
 
-    assign data= (rd)? mem[addr] : {DWIDTH{'bz}};
+    assign data= (rd)? mem[addr] : {DWIDTH{1'bz}};
 
 endmodule
