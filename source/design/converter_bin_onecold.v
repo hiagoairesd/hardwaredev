@@ -4,8 +4,8 @@ module converter_bin_onecold #(
     input  wire [WIDTH-1:0]         bin_in,
     output wire [(1 << WIDTH)-1:0]  onecold_out // (1<<WIDTH) == 2**WIDTH
 );
-    onecold_out = {(1 << WIDTH){1'b1}};
+    assign onecold_out = {(1 << WIDTH){1'b1}};
 
-    assign onecold_out[bin_in] = 1'b0;
+    // assign onecold_out[bin_in] = 1'b0;
 
 endmodule

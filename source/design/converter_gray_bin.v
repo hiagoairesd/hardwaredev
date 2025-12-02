@@ -1,4 +1,4 @@
-module converter_bin_gray #(
+module converter_gray_bin #(
     parameter WIDTH = 4
 ) (
     input  wire [WIDTH-1:0] gray_in,

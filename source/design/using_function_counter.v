@@ -1,4 +1,4 @@
-module counter
+module counter1
 #(
   parameter integer WIDTH=5
  )
