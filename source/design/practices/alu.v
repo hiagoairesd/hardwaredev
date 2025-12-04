@@ -8,8 +8,8 @@ module alu #(
     output  wire                a_is_zero
 
 );
-    assign a_is_zero = (!in_a == 1)? 1'b1 :
-                                     1'b0;
+    assign a_is_zero = (in_a == {WIDTH{1'b0}})? 1'b1 :
+                                                1'b0;
     
     always @*
     begin
