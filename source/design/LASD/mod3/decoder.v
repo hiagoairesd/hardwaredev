@@ -18,7 +18,7 @@ module decoder #(
                     6'b100010: word = 10'b1101100000;   // SUB
                     6'b100100: word = 10'b1100000000;   // AND
                     6'b100101: word = 10'b1100010000;   // OR
-                    6'b101010: word = 10'b1101110000;   // SLT
+                    6'b101010: word = 10'b1101110000;   // SLT  (set on less than)
                 endcase
             end
             
