@@ -25,6 +25,7 @@ module registers_bank_test();
         #10 reset = 0;
     end
 
+    // module instantiation
     registers_bank DUT(
         .clk        (clock),
         .rst        (reset),
@@ -55,6 +56,11 @@ module registers_bank_test();
 
     initial begin
         #100 $finish;
+    end
+
+    initial begin
+        $dumpfile("registers_bank.vcd");
+        $dumpvars(0, registers_bank);
     end
     
 endmodule
