@@ -1,4 +1,4 @@
-module register_bank#(
+module registers_bank#(
     parameter WIDTH = 8,
     parameter NREGS = 4
 ) (

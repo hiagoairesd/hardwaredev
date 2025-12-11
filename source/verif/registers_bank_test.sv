@@ -25,7 +25,7 @@ module registers_bank_test();
         #10 reset = 0;
     end
 
-    datapath DUT(
+    registers_bank DUT(
         .clk        (clock),
         .rst        (reset),
         .wr         (wr),
