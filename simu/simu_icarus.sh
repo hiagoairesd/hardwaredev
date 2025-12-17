@@ -1,5 +1,5 @@
 
-design_path="../source/design"
+design_path="../source/design/LASD/mod2"
 verif_path="../source/verif"
 
 dut=${1:-fifo}
@@ -9,8 +9,7 @@ echo "###   Running Compilation and Elaboration..."
 echo "################################################"
 
 iverilog -o ${dut}.out \
-$design_path/*.v \
-$design_path/LASD/mod1/*.v \
+$design_path/${dut}.v \
 $verif_path/${dut}_test.sv
 
 
