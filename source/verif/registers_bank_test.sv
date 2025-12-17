@@ -15,11 +15,7 @@ module registers_bank_test();
     wire [7:0] data_out2;
 
     // clock generation
-    initial begin
-        forever begin
-            #5 clock = ~clock;
-        end
-    end
+    always #5 clock =~clock;
 
     initial begin
         #10 reset = 0;
@@ -60,7 +56,7 @@ module registers_bank_test();
 
     initial begin
         $dumpfile("registers_bank.vcd");
-        $dumpvars(0, registers_bank);
+        $dumpvars(0, registers_bank_test);
     end
     
 endmodule
