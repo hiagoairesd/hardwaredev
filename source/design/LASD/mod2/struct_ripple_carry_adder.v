@@ -8,7 +8,7 @@ endmodule
 
 //------------------------------------------------------------
 // structural description of an 8-bit ripple carry adder
-module 8bit_ripple_carry_adder (
+module ripple_carry_adder_8bit (
     input  wire [7:0] a,
     input  wire [7:0] b,
     input  wire Cin,
