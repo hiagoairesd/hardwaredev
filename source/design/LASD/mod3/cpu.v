@@ -3,7 +3,7 @@ module cpu #(
     parameter INSTR_WIDTH = 32
 ) (
     input  wire [INSTR_WIDTH-1:0] instr,
-    output wire [CTRL_WIDTH-1:0]  word
+    output reg [CTRL_WIDTH-1:0]  word
 );
 
     wire [5:0] opcode = instr[31:26];
