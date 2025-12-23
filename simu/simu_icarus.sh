@@ -8,7 +8,7 @@ echo "################################################"
 echo "###   Running Compilation and Elaboration..."
 echo "################################################"
 
-iverilog -o ${dut}.out \
+iverilog -g2012 -o ${dut}.out \
 $design_path/${dut}.v \
 $verif_path/${dut}_test.sv
 
