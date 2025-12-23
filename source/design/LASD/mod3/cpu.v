@@ -1,4 +1,4 @@
-module decoder #(
+module cpu #(
     parameter CTRL_WIDTH = 10,
     parameter INSTR_WIDTH = 32
 ) (
@@ -6,11 +6,11 @@ module decoder #(
     output wire [CTRL_WIDTH-1:0]  word
 );
 
-    wire [0:5] opcode = [31:25] instr;
-    wire [0:5] funct = [5:0] instr;
+    wire [5:0] opcode = instr[31:26];
+    wire [5:0] funct = instr[5:0];
 
 
-    always @*
+    always @* begin
         case (opcode) 
             6'b000000: begin    // R-TYPE INSTRUCTION
                 case (funct)
@@ -19,6 +19,7 @@ module decoder #(
                     6'b100100: word = 10'b1100000000;   // AND
                     6'b100101: word = 10'b1100010000;   // OR
                     6'b101010: word = 10'b1101110000;   // SLT  (set on less than)
+                    default:   word = 10'bxxxxxxxxxx;
                 endcase
             end
             
@@ -29,4 +30,5 @@ module decoder #(
             6'b000010: word = 10'b0xxxxxxxx1;   // JMP  (jump)
             default:   word = 10'bxxxxxxxxxx;
         endcase
+    end
 endmodule
