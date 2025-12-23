@@ -1,5 +1,5 @@
 
-design_path="../source/design/LASD/mod2"
+design_path="../source/design/LASD/mod3"
 verif_path="../source/verif"
 
 dut=${1:-fifo}
@@ -18,4 +18,4 @@ echo "###   Running Simulation..."
 echo "################################################"
 vvp ${dut}.out
 
-echo COMPLETED!
+echo "###   Finished Simulation ######################"
