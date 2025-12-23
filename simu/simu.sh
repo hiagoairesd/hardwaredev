@@ -1,5 +1,5 @@
 
-design_path="../source/design/"
+design_path="../source/design/practices/"
 verif_path="../source/verif/"
 
 dut=${1:-fifo}
