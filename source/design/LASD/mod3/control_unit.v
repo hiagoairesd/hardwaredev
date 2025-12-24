@@ -1,4 +1,4 @@
-module cpu #(
+module control_unit #(
     parameter CTRL_WIDTH = 10,
     parameter INSTR_WIDTH = 32
 ) (
