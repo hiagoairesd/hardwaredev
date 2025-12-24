@@ -1,9 +1,9 @@
 module control_unit #(
-    parameter CTRL_WIDTH = 10,
-    parameter INSTR_WIDTH = 32
+    parameter CTRL_WORD_W = 10,
+    parameter INSTR_W = 32
 ) (
-    input  wire [INSTR_WIDTH-1:0] instr,
-    output reg [CTRL_WIDTH-1:0]  word
+    input  wire [INSTR_W-1:0] instr,
+    output reg [CTRL_WORD_W-1:0]  word
 );
 
     wire [5:0] opcode = instr[31:26];
