@@ -4,6 +4,7 @@ module cpu_top_test();
     localparam DATA_W = 32;
 
     reg clk;
+    reg rst;
 
     cpu_top
     #(
@@ -24,8 +25,13 @@ module cpu_top_test();
     initial begin
         $dumpfile("cpu_top.vcd");
         $dumpvars(0, cpu_top_test);
-        #200
-        $display("OK: cpu_top compiled and simulated.");
+
+        rst = 1'b1;
+        #50;
+        rst = 1'b0;
+
+        #200 rst = 1'b1;
+        $display("Smoke test OK: cpu_top compiled and simulated.");
         $finish;
     end
 endmodule
