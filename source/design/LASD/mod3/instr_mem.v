@@ -1,4 +1,4 @@
-module inst_mem #(
+module instr_mem #(
     parameter ADDR_W = 8,
     parameter INSTR_W = 32,
     parameter DEPTH  = 256
