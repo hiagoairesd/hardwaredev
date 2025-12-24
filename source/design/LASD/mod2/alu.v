@@ -1,10 +1,10 @@
 module alu #(
-    parameter WIDTH = 4
+    parameter DATA_W = 4
 ) (
     input  wire [2:0]       op_code,
-    input  wire [WIDTH-1:0] in_a,
-    input  wire [WIDTH-1:0] in_b,
-    output reg  [WIDTH-1:0] out,
+    input  wire [DATA_W-1:0] in_a,
+    input  wire [DATA_W-1:0] in_b,
+    output reg  [DATA_W-1:0] out,
     output wire             is_zero
 );
     
@@ -14,12 +14,12 @@ module alu #(
             3'b110 : out = in_a + ~in_b + 1; // sub
             3'b000 : out = in_a & in_b;      // and
             3'b001 : out = in_a | in_b;      // or
-            3'b111 : out = (in_a < in_b) ? {{WIDTH-1{1'b0}}, 1'b1} : {WIDTH{1'b0}}; // less than
-            default: out = {WIDTH{1'b0}};
+            3'b111 : out = (in_a < in_b) ? {{DATA_W-1{1'b0}}, 1'b1} : {DATA_W{1'b0}}; // less than
+            default: out = {DATA_W{1'b0}};
         endcase
     end
 
-    assign is_zero = (out == {WIDTH{1'b0}}) ? 1'b1 : 1'b0;
+    assign is_zero = (out == {DATA_W{1'b0}}) ? 1'b1 : 1'b0;
 
 
 endmodule
