@@ -1,4 +1,4 @@
-module cpu_test();
+module control_unit_test();
 
     localparam CTRL_WIDTH = 10;
     localparam INSTR_WIDTH = 32;
@@ -6,7 +6,7 @@ module cpu_test();
     reg [INSTR_WIDTH-1:0] instr;
     wire [CTRL_WIDTH-1:0]  word;
 
-    cpu 
+    control_unit
     #(
         .CTRL_WIDTH(CTRL_WIDTH),
         .INSTR_WIDTH(INSTR_WIDTH)
@@ -97,7 +97,7 @@ module cpu_test();
     end
 
     initial begin
-        $dumpfile("cpu.vcd");
-        $dumpvars(0, cpu_test);
+        $dumpfile("control_unit.vcd");
+        $dumpvars(0, control_unit_test);
     end
 endmodule
