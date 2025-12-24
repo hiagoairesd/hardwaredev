@@ -2,13 +2,10 @@ module cpu_top #(
     parameter ADDR_W = 8,
     parameter DATA_W = 32
 )(
-    
+    input wire clk
 );
     localparam INSTR_W = 32;
     localparam CTRL_WORD_W = 10;
-
-    // clock signal
-    wire clk;
 
     // Register Bank signals
     wire rb_rst;
@@ -39,8 +36,7 @@ module cpu_top #(
     wire [INSTR_W-1:0]      cu_instr;
     wire [CTRL_WORD_W-1:0]  cu_word;
 
-
-    registers_bank(
+    registers_bank rb_inst(
         .clk        (clk),
         .rst        (rb_rst),
         .wr         (rb_wr),
@@ -93,12 +89,4 @@ module cpu_top #(
         .instr(cu_instr),
         .word(cu_word)
     );
-
-
-
-
-    
-
-
-
 endmodule
