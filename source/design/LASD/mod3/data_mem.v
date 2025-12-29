@@ -1,6 +1,6 @@
 module data_mem #(
     parameter ADDR_W = 5,
-    parameter DATA_W = 8
+    parameter DATA_W = 32
 ) (
     input   wire                clk,
     input   wire                wr,

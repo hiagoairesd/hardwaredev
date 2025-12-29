@@ -14,7 +14,7 @@ module alu #(
             3'b110 : out = in_a + ~in_b + 1; // sub
             3'b000 : out = in_a & in_b;      // and
             3'b001 : out = in_a | in_b;      // or
-            3'b111 : out = (in_a < in_b) ? {{DATA_W-1{1'b0}}, 1'b1} : {DATA_W{1'b0}}; // less than
+            3'b111 : out = (in_a < in_b) ? {{DATA_W-1{1'b0}}, 1'b1} : {DATA_W{1'b0}}; // set less than
             default: out = {DATA_W{1'b0}};
         endcase
     end
