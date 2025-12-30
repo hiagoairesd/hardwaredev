@@ -19,7 +19,7 @@ module control_unit #(
                     6'b100100: word = 10'b1100000000;   // AND
                     6'b100101: word = 10'b1100010000;   // OR
                     6'b101010: word = 10'b1101110000;   // SLT  (set on less than)
-                    default:   word = 10'bxxxxxxxxxx;
+                    default:   word = 10'b0000000000;
                 endcase
             end
             
@@ -28,7 +28,7 @@ module control_unit #(
             6'b000100: word = 10'b0x011010x0;   // BEQ  (branch if equal)
             6'b001000: word = 10'b1010100000;   // ADDi (add imm)
             6'b000010: word = 10'b0xxxxxxxx1;   // JMP  (jump)
-            default:   word = 10'bxxxxxxxxxx;
+            default:   word = 10'b0000000000;
         endcase
     end
 endmodule
