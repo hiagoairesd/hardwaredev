@@ -49,14 +49,14 @@ module cpu_top #(
     );
 
     // Word control signals breakdown
-    wire regWrite   = word[9];
-    wire regDst     = word[8];
-    wire aluSrc     = word[7];
-    wire aluControl = word[6:4];
-    wire branch     = word[3];
-    wire memWrite   = word[2];
-    wire memtoReg   = word[1];
-    wire jump       = word[0];
+    wire regWrite         = word[9];
+    wire regDst           = word[8];
+    wire aluSrc           = word[7];
+    wire [2:0] aluControl = word[6:4];
+    wire branch           = word[3];
+    wire memWrite         = word[2];
+    wire memtoReg         = word[1];
+    wire jump             = word[0];
 
     // Internal wires
     wire [4:0] write_reg   = (regDst)? rd : rt;                     // Destination Register  
