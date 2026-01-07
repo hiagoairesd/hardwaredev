@@ -30,6 +30,7 @@ module cpu_top #(
                                   (take_branch)? pc_branch : pc_plus1;
     
     // Instruction fields
+    wire [5:0] op     = instr[31:26];
     wire [4:0] rs     = instr[25:21];   // Source Register 1
     wire [4:0] rt     = instr[20:16];   // Source Register 2
     wire [4:0] rd     = instr[15:11];   // Destination Register 
