@@ -29,9 +29,11 @@ module cpu_top_test();
 
     bit trace, trace_w;
     initial begin
-        trace   = $test$plusargs("trace");      // Prints per cycle
-        trace_w = $test$plusargs("trace_w");    // Prints wr/beq/jmp
+        trace_w = $test$plusargs("trace_w");
+        trace   = $test$plusargs("trace") && !trace_w;
+        if (trace) trace_w = 1'b1;
     end
+
 
     // Trace per cycle: PC + instr + opcode
     always @(posedge clk) begin
@@ -40,26 +42,26 @@ module cpu_top_test();
                      $time, DUT.pc, DUT.instr, DUT.op);
         end
     end
-
-    always@(posedge clk) begin
+    // Trace_w: Register + data
+    always @(posedge clk) begin
         if(!rst && trace_w) begin
             // Writing in register 
             if(DUT.regWrite) begin
-                $display("t=%0t WR R%0d <= %08h",
+                $display("t=%0t | REGWRITE | R%0d <= %08h",
                          $time, DUT.write_reg, DUT.rb_wdata);
             end
             // Writing in memory(SW)
             if (DUT.memWrite) begin
-              $display("t=%0t MEMWRITE mem[%0d] <= %08h",
+              $display("t=%0t | MEMWRITE | mem[%0d] <= %08h",
                        $time, DUT.alu_out[ADDR_W-1:0], DUT.dm_data);
             end
             // Branch tomado
             if (DUT.take_branch) 
-                $display("t=%0t BRANCH taken -> pc_next=%0d",
+                $display("t=%0t | BRANCH taken -> pc_next=%0d",
                          $time, DUT.pc_next);
             // Jump
             if (DUT.jump)
-                $display("t=%0t JUMP -> pc_next=%0d",
+                $display("t=%0t | JUMP -> pc_next=%0d",
                          $time, DUT.pc_next);
         end
     end
@@ -257,7 +259,7 @@ module cpu_top_test();
 
             #1;
             $display("\033[1;34m-> Loading program...");
-            pick_test(test_id); //readm...
+            pick_test(test_id); //$readmemh...
 
             repeat (2) @(posedge clk);
             rst = 1'b0;
