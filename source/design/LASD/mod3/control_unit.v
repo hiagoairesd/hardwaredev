@@ -5,10 +5,8 @@ module control_unit #(
     input  wire [INSTR_W-1:0]      instr,
     output reg  [CTRL_WORD_W-1:0]  word
 );
-
     wire [5:0] opcode = instr[31:26];
     wire [5:0] funct = instr[5:0];
-
 
     always @* begin
         case (opcode) 
@@ -24,7 +22,6 @@ module control_unit #(
                     default:   word = 10'b0000000000;
                 endcase
             end
-            
             6'b100011: word = 10'b1010100010;   // LW   (load word)
             6'b101011: word = 10'b0x101001x0;   // SW   (store word)
             6'b000100: word = 10'b0x011010x0;   // BEQ  (branch if equal)
