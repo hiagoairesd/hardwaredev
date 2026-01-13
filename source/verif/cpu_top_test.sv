@@ -38,8 +38,8 @@ module cpu_top_test();
     // Trace per cycle: PC + instr + opcode
     always @(posedge clk) begin
         if (!rst && trace) begin
-            $display("t=%0t pc=%0d instr=%08h op=%02h",
-                     $time, DUT.pc, DUT.instr, DUT.op);
+            $display("t=%0t pc=%0d instr=%08h opcode=%02h",
+                     $time, DUT.pc, DUT.instr, DUT.opcode);
         end
     end
     // Trace_w: Register + data

@@ -9,6 +9,8 @@ module cpu_top #(
     localparam CTRL_WORD_W = 10;
     localparam [5:0] OP_ANDI = 6'b001100;
     localparam [5:0] OP_ORI  = 6'b001101;
+    localparam [5:0] FUNCT_SRL  = 6'b000010;
+    localparam [5:0] FUNCT_SLL  = 6'b000000;
 
     // Control Unit control signals
     wire [INSTR_W-1:0]     instr;
@@ -25,26 +27,30 @@ module cpu_top #(
 
     // PC Next logic
     wire [ADDR_W-1:0] pc_plus1  = pc + 1;
-    wire branch_NEQ             = (op == 6'b000101);                // if BNE opcode
-    wire take_branch            = branch & (is_zero ^ branch_NEQ);  // branch taken if branch signal (from ctrl word) is high and ALU zero flag is set
-    wire [ADDR_W-1:0] pc_branch = pc_plus1 + imm_ext[ADDR_W-1:0];  // branch target address (next + imm)
-    wire [ADDR_W-1:0] pc_jump   = instr[ADDR_W-1:0];                // jump target address (from instr)
+    wire branch_NEQ             = (opcode == 6'b000101);                // if BNE opcode
+    wire take_branch            = branch & (is_zero ^ branch_NEQ);      // branch taken if branch signal (from ctrl word) is high and ALU zero flag is set
+    wire [ADDR_W-1:0] pc_branch = pc_plus1 + imm_ext[ADDR_W-1:0];       // branch target address (next + imm)
+    wire [ADDR_W-1:0] pc_jump   = instr[ADDR_W-1:0];                    // jump target address (from instr)
     wire [ADDR_W-1:0] pc_next   = (jump       )? pc_jump   :
                                   (take_branch)? pc_branch : pc_plus1;
     
     // Instruction fields
-    wire [5:0] op     = instr[31:26];
+    wire [5:0] opcode = instr[31:26];
     wire [4:0] rs     = instr[25:21];   // Source Register 1
     wire [4:0] rt     = instr[20:16];   // Source Register 2
     wire [4:0] rd     = instr[15:11];   // Destination Register 
     wire [4:0] shamt  = instr[10:6];    // Shift amount
+    wire [5:0] funct  = instr[5:0];     // Function field
 
-    wire [15:0] imm   = instr[15:0];                // Immediate value
-    wire imm_is_zext  =                             // ANDI instruction uses zero-extended immediate
-        (op == OP_ANDI) ||
-        (op == OP_ORI);
+    wire [15:0] imm   = instr[15:0];    // Immediate value
+    wire imm_is_zext  =                 // ANDI instruction uses zero-extended immediate
+        (opcode == OP_ANDI) ||
+        (opcode == OP_ORI);
+    wire is_shift     =                 // Instructions that use shamt field
+        (opcode == 6'b000000 && funct == FUNCT_SLL) ||                   
+        (opcode == 6'b000000 && funct == FUNCT_SRL);
+    wire [DATA_W-1:0] imm_ext = imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};    // Second part: sign-extend immediate
 
-    wire [31:0] imm_ext = imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};    // Second part: sign-extend immediate
 
     // Instruction Memory instantiation
     instr_mem
@@ -68,13 +74,14 @@ module cpu_top #(
     wire jump             = word[0];
 
     // Internal wires
-    wire [4:0] write_reg   = (regDst)? rd : rt;                    // Destination Register  
-    wire [31:0] alu_b      = (aluSrc)? imm_ext : rb_data_out2;     // ALU second operand
-    wire [31:0] rb_wdata   = (memtoReg)? dm_data : alu_out;        // select data (writeBack) to write to Register Bank (from Data Memory or ALU)
+    wire [4:0] write_reg    = (regDst)  ? rd : rt;                          // Destination Register  
+    wire [DATA_W-1:0] alu_a = (is_shift)? {27'b0, shamt} : rb_data_out1;    // ALU first operand selection (register data)
+    wire [DATA_W-1:0] alu_b = (aluSrc)  ? imm_ext        : rb_data_out2;    // ALU second operand selection (register data or immediate)
+    wire [DATA_W-1:0] rb_wdata   = (memtoReg)? dm_data : alu_out;           // select data (writeBack) to write to Register Bank (from Data Memory or ALU)
 
     // Register Bank signals
-    wire [DATA_W-1:0] rb_data_out1;    // input A to ALU
-    wire [DATA_W-1:0] rb_data_out2;    // input B to ALU
+    wire [DATA_W-1:0] rb_data_out2;
+    wire [DATA_W-1:0] rb_data_out1;
 
     // Register Bank instantiation
     registers_bank rb_inst(
@@ -99,7 +106,7 @@ module cpu_top #(
         .DATA_W(DATA_W)
     ) alu_inst (
         .opcode  (aluControl),
-        .in_a    (rb_data_out1),
+        .in_a    (alu_a),
         .in_b    (alu_b),
         .out     (alu_out),
         .is_zero (is_zero)
