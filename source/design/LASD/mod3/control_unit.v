@@ -27,9 +27,9 @@ module control_unit #(
             6'b000100: word = 10'b0x011010x0;   // BEQ  (branch if equal)
             6'b000101: word = 10'b0x011010x0;   // BNE  (branch if not equal)
             6'b001000: word = 10'b1010100000;   // ADDi (add imm)
+            6'b001101: word = 10'b1010010000;   // ORi  (or imm)
             6'b000010: word = 10'b0xxxxxxxx1;   // JMP  (jump)
             6'b001100: word = 10'b1010000000;   // ANDi (and imm)
-            6'b001101: word = 10'b1010010000;   // ORi  (or imm)
             6'b001111: word = 10'b1011010000;   // LUI  (load upper immediate)
             default:   word = 10'b0000000000;
         endcase
