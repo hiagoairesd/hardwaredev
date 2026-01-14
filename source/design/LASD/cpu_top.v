@@ -9,6 +9,7 @@ module cpu_top #(
     localparam CTRL_WORD_W = 10;
     localparam [5:0] OP_ANDI = 6'b001100;
     localparam [5:0] OP_ORI  = 6'b001101;
+    localparam [5:0] OP_LUI  = 6'b001111;
     localparam [5:0] FUNCT_SRL  = 6'b000010;
     localparam [5:0] FUNCT_SLL  = 6'b000000;
 
@@ -35,7 +36,7 @@ module cpu_top #(
                                   (take_branch)? pc_branch : pc_plus1;
     
     // Instruction fields
-    wire [5:0] opcode = instr[31:26];
+    wire [5:0] opcode = instr[DATA_W-1:26];
     wire [4:0] rs     = instr[25:21];   // Source Register 1
     wire [4:0] rt     = instr[20:16];   // Source Register 2
     wire [4:0] rd     = instr[15:11];   // Destination Register 
@@ -45,7 +46,8 @@ module cpu_top #(
     wire [15:0] imm   = instr[15:0];    // Immediate value
     wire imm_is_zext  =                 // ANDI instruction uses zero-extended immediate
         (opcode == OP_ANDI) ||
-        (opcode == OP_ORI);
+        (opcode == OP_ORI)  ||
+        (opcode == OP_LUI);
     wire is_shift     =                 // Instructions that use shamt field
         (opcode == 6'b000000 && funct == FUNCT_SLL) ||                   
         (opcode == 6'b000000 && funct == FUNCT_SRL);
@@ -74,10 +76,10 @@ module cpu_top #(
     wire jump             = word[0];
 
     // Internal wires
-    wire [4:0] write_reg    = (regDst)  ? rd : rt;                          // Destination Register  
-    wire [DATA_W-1:0] alu_a = (is_shift)? {27'b0, shamt} : rb_data_out1;    // ALU first operand selection (register data)
-    wire [DATA_W-1:0] alu_b = (aluSrc)  ? imm_ext        : rb_data_out2;    // ALU second operand selection (register data or immediate)
-    wire [DATA_W-1:0] rb_wdata   = (memtoReg)? dm_data : alu_out;           // select data (writeBack) to write to Register Bank (from Data Memory or ALU)
+    wire [4:0] write_reg       = (regDst)  ? rd             : rt;              // Destination Register  
+    wire [DATA_W-1:0] alu_a    = (is_shift)? {27'b0, shamt} : rb_data_out1;    // ALU first operand selection (register data)
+    wire [DATA_W-1:0] alu_b    = (aluSrc)  ? imm_ext        : rb_data_out2;    // ALU second operand selection (register data or immediate)
+    wire [DATA_W-1:0] rb_wdata = (memtoReg)? dm_data        : alu_out;         // select data (writeBack) to write to Register Bank (from Data Memory or ALU)
 
     // Register Bank signals
     wire [DATA_W-1:0] rb_data_out2;

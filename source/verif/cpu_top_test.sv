@@ -112,6 +112,30 @@ module cpu_top_test();
                     $readmemh("../source/verif/assembly/beq.hex", DUT.instr_mem_inst.mem);
                     cycles= 16;
                 end
+                7: begin    // ANDi Tests
+                    $readmemh("../source/verif/assembly/andi.hex", DUT.instr_mem_inst.mem);
+                    cycles= 7;
+                end
+                8: begin    // ORi Tests
+                    $readmemh("../source/verif/assembly/ori.hex", DUT.instr_mem_inst.mem);
+                    cycles= 7;
+                end
+                9: begin    // LUI Tests
+                    $readmemh("../source/verif/assembly/lui.hex", DUT.instr_mem_inst.mem);
+                    cycles= 8;
+                end
+                10: begin    // SLL Tests
+                    $readmemh("../source/verif/assembly/sll.hex", DUT.instr_mem_inst.mem);
+                    cycles= 8;
+                end
+                11: begin    // SRL Tests
+                    $readmemh("../source/verif/assembly/srl.hex", DUT.instr_mem_inst.mem);
+                    cycles= 8;
+                end
+                12: begin    // BNE Tests
+                    $readmemh("../source/verif/assembly/bne.hex", DUT.instr_mem_inst.mem);
+                    cycles= 10;
+                end
                 default: begin  // Integration Tests
                     $readmemh("../source/verif/assembly/integration.hex", DUT.instr_mem_inst.mem);
                     cycles= 21;
@@ -197,23 +221,110 @@ module cpu_top_test();
             check_reg(6, DUT.rb_inst.regs[6], 32'd123);
         end
     endtask
+    task automatic check_andi;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING ANDi TESTS [7] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd305398015);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd15);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd240);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd15);
+            check_mem(4, DUT.data_mem_inst.mem[4], 32'd240);
+        end
+    endtask
+    task automatic check_ori;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING ORi TESTS [8] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd0);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd1);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd241);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd3855);
+            check_reg(5, DUT.rb_inst.regs[5], 32'd4095);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd241);
+            check_mem(4, DUT.data_mem_inst.mem[4], 32'd4095);
+        end
+    endtask
+    task automatic check_lui;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING LUI TESTS [9] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd0);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd4294901760);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd305441741);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd305397760);
+            check_mem(4, DUT.data_mem_inst.mem[4], 32'd4294901760);
+            check_mem(8, DUT.data_mem_inst.mem[8], 32'd305441741);
+        end
+    endtask
+    task automatic check_sll;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING SLL TESTS [10] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd16);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd32);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd240);
+            check_reg(5, DUT.rb_inst.regs[5], 32'd61440);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd16);
+            check_mem(4, DUT.data_mem_inst.mem[4], 32'd61440);
+        end
+    endtask
+    task automatic check_srl;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING SRL TESTS [11] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd2147483648);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd1073741824);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd240);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd15);
+            check_reg(5, DUT.rb_inst.regs[5], 32'd0);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd1073741824);
+            check_mem(4, DUT.data_mem_inst.mem[4], 32'd15);
+        end
+    endtask
+    task automatic check_bne;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING BNE TESTS [12] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
+            check_reg(2, DUT.rb_inst.regs[2], 32'd2);
+            check_reg(3, DUT.rb_inst.regs[3], 32'd0);
+            check_reg(4, DUT.rb_inst.regs[4], 32'd5);
+            check_reg(5, DUT.rb_inst.regs[5], 32'd5);
+            check_reg(6, DUT.rb_inst.regs[6], 32'd13107);
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd13107);
+        end
+    endtask
 
     task automatic check_integration;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING INTEGRATION TESTS [default] ", `ANSI_RST});
             $display({`ANSI_BOLD, "-------------", `ANSI_RST});
-            check_reg(1,  DUT.rb_inst.regs[1],      32'd1);
-            check_reg(2,  DUT.rb_inst.regs[2],      32'd2);
-            check_reg(3,  DUT.rb_inst.regs[3],      32'd3);
-            check_reg(4,  DUT.rb_inst.regs[4],      32'd2);
-            check_reg(5,  DUT.rb_inst.regs[5],      32'd2);
-            check_reg(6,  DUT.rb_inst.regs[6],      32'd3);
-            check_reg(7,  DUT.rb_inst.regs[7],      32'd1);
-            check_reg(8,  DUT.rb_inst.regs[8],      32'd0);
-            check_mem(0,  DUT.data_mem_inst.mem[0], 32'd3);
-            check_reg(9,  DUT.rb_inst.regs[9],      32'd3);
-            check_reg(10, DUT.rb_inst.regs[10],     32'd5);
+            check_reg(1,  DUT.rb_inst.regs[1],      32'd10);
+            check_reg(2,  DUT.rb_inst.regs[2],      32'd15);
+            check_reg(3,  DUT.rb_inst.regs[3],      32'd65536);
+            check_reg(4,  DUT.rb_inst.regs[4],      32'd40);
+            check_reg(5,  DUT.rb_inst.regs[5],      32'd20);
+            check_reg(7,  DUT.rb_inst.regs[7],      32'd15);
+            check_reg(8,  DUT.rb_inst.regs[8],      32'd31);
+            check_reg(9,  DUT.rb_inst.regs[9],      32'd15);
+            check_reg(10, DUT.rb_inst.regs[10],     32'd25);
+            check_reg(11, DUT.rb_inst.regs[11],     32'd10);
+            check_mem(0,  DUT.data_mem_inst.mem[0], 32'd25);
+            check_reg(12, DUT.rb_inst.regs[12],     32'd25);
+            check_reg(13, DUT.rb_inst.regs[13],     32'd1);
+            check_reg(14, DUT.rb_inst.regs[14],     32'd0);
+            check_mem(1,  DUT.data_mem_inst.mem[1], 32'd0);
         end
     endtask
 
@@ -273,6 +384,12 @@ module cpu_top_test();
                 4: check_rtype();
                 5: check_jump();
                 6: check_beq();
+                7: check_andi();
+                8: check_ori();
+                9: check_lui();
+                10: check_sll();
+                11: check_srl();
+                12: check_bne();
                 default: check_integration();
             endcase
 
