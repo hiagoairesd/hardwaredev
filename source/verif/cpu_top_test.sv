@@ -11,7 +11,7 @@ module cpu_top_test();
     reg rst;
 
     integer test_id;
-    integer max_cycles = 200;
+    integer max_cycles = 500;
     wire halted;
     
     cpu_top
@@ -69,18 +69,18 @@ module cpu_top_test();
     initial begin
         $dumpfile("cpu_top.vcd");
         $dumpvars(0, cpu_top_test);
-        $dumpvars(0, DUT.data_mem_inst.mem[0]);
-        $dumpvars(0, DUT.data_mem_inst.mem[255]);
-        $dumpvars(0, DUT.rb_inst.regs[1]);
-        $dumpvars(0, DUT.rb_inst.regs[2]);
-        $dumpvars(0, DUT.rb_inst.regs[3]);
-        $dumpvars(0, DUT.rb_inst.regs[4]);
-        $dumpvars(0, DUT.rb_inst.regs[5]);
-        $dumpvars(0, DUT.rb_inst.regs[6]);
-        $dumpvars(0, DUT.rb_inst.regs[7]);
-        $dumpvars(0, DUT.rb_inst.regs[8]);
-        $dumpvars(0, DUT.rb_inst.regs[9]);
-        $dumpvars(0, DUT.rb_inst.regs[10]);
+        // $dumpvars(0, DUT.data_mem_inst.mem[0]);
+        // $dumpvars(0, DUT.data_mem_inst.mem[255]);
+        // $dumpvars(0, DUT.rb_inst.regs[1]);
+        // $dumpvars(0, DUT.rb_inst.regs[2]);
+        // $dumpvars(0, DUT.rb_inst.regs[3]);
+        // $dumpvars(0, DUT.rb_inst.regs[4]);
+        // $dumpvars(0, DUT.rb_inst.regs[5]);
+        // $dumpvars(0, DUT.rb_inst.regs[6]);
+        // $dumpvars(0, DUT.rb_inst.regs[7]);
+        // $dumpvars(0, DUT.rb_inst.regs[8]);
+        // $dumpvars(0, DUT.rb_inst.regs[9]);
+        // $dumpvars(0, DUT.rb_inst.regs[10]);
     end
 
     task automatic pick_test(input integer test_id);
@@ -101,6 +101,8 @@ module cpu_top_test();
                 10: $readmemh("../source/verif/assembly/sll.hex", DUT.instr_mem_inst.mem);
                 11: $readmemh("../source/verif/assembly/srl.hex", DUT.instr_mem_inst.mem);
                 12: $readmemh("../source/verif/assembly/bne.hex", DUT.instr_mem_inst.mem);
+                13 : $readmemh("../source/verif/assembly/fibonacci.hex", DUT.instr_mem_inst.mem);
+                14 : $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.instr_mem_inst.mem);
                 default: $readmemh("../source/verif/assembly/integration.hex", DUT.instr_mem_inst.mem);
             endcase
         end
