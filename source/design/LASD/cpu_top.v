@@ -3,7 +3,8 @@ module cpu_top #(
     parameter DATA_W = 32
 )(
     input wire clk,
-    input wire rst
+    input wire rst,
+    output wire halted
 );
     localparam INSTR_W = 32;
     localparam CTRL_WORD_W = 10;
@@ -12,6 +13,10 @@ module cpu_top #(
     localparam [5:0] OP_LUI  = 6'b001111;
     localparam [5:0] FUNCT_SRL  = 6'b000010;
     localparam [5:0] FUNCT_SLL  = 6'b000000;
+
+    // Halt signal
+    wire halt;
+    assign halted = halt;
 
     // Control Unit control signals
     wire [INSTR_W-1:0]     instr;
@@ -22,7 +27,7 @@ module cpu_top #(
     always @(posedge clk) begin
         if(rst)
             pc <= {ADDR_W{1'b0}};
-        else
+        else if (!halt)
             pc <= pc_next;
     end
 
@@ -137,6 +142,7 @@ module cpu_top #(
         .INSTR_W    (INSTR_W)
     ) control_unit_inst (
         .instr(instr),
-        .word (word)
+        .word (word),
+        .halt(halt)
     );
 endmodule

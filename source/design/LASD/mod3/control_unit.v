@@ -3,12 +3,17 @@ module control_unit #(
     parameter INSTR_W = 32
 ) (
     input  wire [INSTR_W-1:0]      instr,
-    output reg  [CTRL_WORD_W-1:0]  word
+    output reg  [CTRL_WORD_W-1:0]  word,
+    output reg                     halt
 );
+    localparam [5:0] OP_HALT = 6'b111111;
+
     wire [5:0] opcode = instr[31:26];
     wire [5:0] funct = instr[5:0];
 
     always @* begin
+        halt = 1'b0;
+        
         case (opcode) 
             6'b000000: begin    // R-TYPE INSTRUCTION
                 case (funct)
@@ -31,7 +36,11 @@ module control_unit #(
             6'b000010: word = 10'b0xxxxxxxx1;   // JMP  (jump)
             6'b001100: word = 10'b1010000000;   // ANDi (and imm)
             6'b001111: word = 10'b1011010000;   // LUI  (load upper immediate)
-            default:   word = 10'b0000000000;
+            OP_HALT: begin
+                word = 10'b0000000000;            // HALT
+                halt = 1'b1;
+            end
+            default: word = 10'b0000000000;       // NOP or undefined instruction
         endcase
     end
 endmodule

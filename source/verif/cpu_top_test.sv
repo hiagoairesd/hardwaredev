@@ -11,7 +11,8 @@ module cpu_top_test();
     reg rst;
 
     integer test_id;
-    integer cycles;
+    integer max_cycles = 200;
+    wire halted;
     
     cpu_top
     #(
@@ -19,7 +20,8 @@ module cpu_top_test();
         .DATA_W (DATA_W)
     ) DUT (
         .clk(clk),
-        .rst(rst)
+        .rst(rst),
+        .halted(halted)
     );
 
     initial begin
@@ -33,7 +35,6 @@ module cpu_top_test();
         trace   = $test$plusargs("trace") && !trace_w;
         if (trace) trace_w = 1'b1;
     end
-
 
     // Trace per cycle: PC + instr + opcode
     always @(posedge clk) begin
@@ -88,58 +89,19 @@ module cpu_top_test();
             #1;
 
             case(test_id)
-                1: begin    // Simple Registers Tests
-                    $readmemh("../source/verif/assembly/regs.hex", DUT.instr_mem_inst.mem);
-                    cycles= 9;
-                end
-                2: begin    // Basic SW/LW Tests
-                    $readmemh("../source/verif/assembly/basic_swlw.hex", DUT.instr_mem_inst.mem);
-                    cycles= 9;
-                end
-                3: begin    // Border SW/LW Tests
-                    $readmemh("../source/verif/assembly/border_swlw.hex", DUT.instr_mem_inst.mem);
-                    cycles= 15;
-                end
-                4: begin    // R-TYPE Tests (ALU Tests)
-                    $readmemh("../source/verif/assembly/rtype.hex", DUT.instr_mem_inst.mem);
-                    cycles= 14;
-                end
-                5: begin    // Jump Tests
-                    $readmemh("../source/verif/assembly/jump.hex", DUT.instr_mem_inst.mem);
-                    cycles= 11;
-                end
-                6: begin    // BEQ Tests
-                    $readmemh("../source/verif/assembly/beq.hex", DUT.instr_mem_inst.mem);
-                    cycles= 16;
-                end
-                7: begin    // ANDi Tests
-                    $readmemh("../source/verif/assembly/andi.hex", DUT.instr_mem_inst.mem);
-                    cycles= 7;
-                end
-                8: begin    // ORi Tests
-                    $readmemh("../source/verif/assembly/ori.hex", DUT.instr_mem_inst.mem);
-                    cycles= 7;
-                end
-                9: begin    // LUI Tests
-                    $readmemh("../source/verif/assembly/lui.hex", DUT.instr_mem_inst.mem);
-                    cycles= 8;
-                end
-                10: begin    // SLL Tests
-                    $readmemh("../source/verif/assembly/sll.hex", DUT.instr_mem_inst.mem);
-                    cycles= 8;
-                end
-                11: begin    // SRL Tests
-                    $readmemh("../source/verif/assembly/srl.hex", DUT.instr_mem_inst.mem);
-                    cycles= 8;
-                end
-                12: begin    // BNE Tests
-                    $readmemh("../source/verif/assembly/bne.hex", DUT.instr_mem_inst.mem);
-                    cycles= 10;
-                end
-                default: begin  // Integration Tests
-                    $readmemh("../source/verif/assembly/integration.hex", DUT.instr_mem_inst.mem);
-                    cycles= 21;
-                end
+                1:  $readmemh("../source/verif/assembly/regs.hex", DUT.instr_mem_inst.mem);
+                2:  $readmemh("../source/verif/assembly/basic_swlw.hex", DUT.instr_mem_inst.mem);
+                3:  $readmemh("../source/verif/assembly/border_swlw.hex", DUT.instr_mem_inst.mem);
+                4:  $readmemh("../source/verif/assembly/rtype.hex", DUT.instr_mem_inst.mem);
+                5:  $readmemh("../source/verif/assembly/jump.hex", DUT.instr_mem_inst.mem);
+                6:  $readmemh("../source/verif/assembly/beq.hex", DUT.instr_mem_inst.mem);
+                7:  $readmemh("../source/verif/assembly/andi.hex", DUT.instr_mem_inst.mem);
+                8:  $readmemh("../source/verif/assembly/ori.hex", DUT.instr_mem_inst.mem);
+                9:  $readmemh("../source/verif/assembly/lui.hex", DUT.instr_mem_inst.mem);
+                10: $readmemh("../source/verif/assembly/sll.hex", DUT.instr_mem_inst.mem);
+                11: $readmemh("../source/verif/assembly/srl.hex", DUT.instr_mem_inst.mem);
+                12: $readmemh("../source/verif/assembly/bne.hex", DUT.instr_mem_inst.mem);
+                default: $readmemh("../source/verif/assembly/integration.hex", DUT.instr_mem_inst.mem);
             endcase
         end
     endtask
@@ -364,6 +326,7 @@ module cpu_top_test();
     endtask
 
     task automatic run_test(input integer test_id);
+        integer i;
         begin
             rst = 1'b1;
             $display("\033[1;34m-> Reset asserted @%0t\033[0m", $time);
@@ -375,8 +338,17 @@ module cpu_top_test();
             repeat (2) @(posedge clk);
             rst = 1'b0;
             $display("\033[1;34m-> Reset deasserted @%0t\033[0m", $time);
-            repeat (cycles) @(posedge clk);
-            
+            for (i = 0; i < max_cycles; i = i + 1) begin
+                @(posedge clk);
+                if (DUT.halted == 1'b1) begin
+                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.pc);
+                    i = max_cycles; // força sair do loop (workaround pro Icarus)
+                end
+            end
+            if (DUT.halted != 1'b1) begin
+                $fatal(1, "\033[1;31m\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t\033[0m",
+                          max_cycles, DUT.pc, $time);
+            end
             case(test_id)
                 1: check_regs();
                 2: check_basic_swlw();
