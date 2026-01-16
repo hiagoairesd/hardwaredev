@@ -24,7 +24,7 @@ echo "###############################################################"
 echo "DUT : $dut"
 echo "TB  : $tb"
 
-# procura RTL em TODO design/ (qualquer subpasta), aceitando .v e .sv
+# Seache RTL file in design/ 
 rtl="$(
   find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) 2>/dev/null \
   | head -n 1 || true
