@@ -6,8 +6,12 @@ DESIGN="$ROOT/design"
 VERIF="$ROOT/verif"
 LASD="$DESIGN/LASD"
 
-dut="${1:-fifo}"
-shift || true
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <dut> [vvp_args...]" >&2
+  exit 1
+fi
+dut="$1"
+shift
 
 out="${dut}.out"
 tb="${VERIF}/${dut}_test.sv"
