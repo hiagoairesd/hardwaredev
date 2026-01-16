@@ -1,23 +1,25 @@
 module control_unit_test();
 
-    localparam CTRL_WIDTH = 10;
-    localparam INSTR_WIDTH = 32;
+    localparam CTRL_WORD_W = 10;
+    localparam INSTR_W = 32;
 
-    reg [INSTR_WIDTH-1:0] instr;
-    wire [CTRL_WIDTH-1:0]  word;
+    reg [INSTR_W-1:0] instr;
+    wire [CTRL_WORD_W-1:0]  word;
+    wire halt;
 
     control_unit
     #(
-        .CTRL_WIDTH(CTRL_WIDTH),
-        .INSTR_WIDTH(INSTR_WIDTH)
+        .CTRL_WORD_W(CTRL_WORD_W),
+        .INSTR_W(INSTR_W)
     ) DUT (
         .instr (instr),
-        .word (word)
+        .word (word),
+        .halt (halt)
     );
 
     // extract opcode and funct from instr
     task automatic decode_instr(
-        input  logic [INSTR_WIDTH-1:0] instr_i,
+        input  logic [INSTR_W-1:0] instr_i,
         output logic [5:0]             opcode,
         output logic [5:0]             funct
         );
@@ -27,7 +29,7 @@ module control_unit_test();
 
 
     task check;
-        input logic [CTRL_WIDTH-1:0]      exp_word;
+        input logic [CTRL_WORD_W-1:0]      exp_word;
         
         logic [5:0] op, fn;
         begin
@@ -89,9 +91,9 @@ module control_unit_test();
         instr = 32'b00001000000000000000000001000000; #5 check(10'b0xxxxxxxx1);
         instr = 32'b00001000000000000000100000000000; #5 check(10'b0xxxxxxxx1);
         $display("\t\tDefault");
-        instr = 32'b11111100000000000000000000000000; #5 check(10'bxxxxxxxxxx);
-        instr = 32'b01010100000000000000000000000000; #5 check(10'bxxxxxxxxxx);
-        instr = 32'b00000001010010110110000000000001; #5 check(10'bxxxxxxxxxx);
+        instr = 32'b11111100000000000000000000000000; #5 check(10'b0000000000);
+        instr = 32'b01010100000000000000000000000000; #5 check(10'b0000000000);
+        instr = 32'b00000001010010110110000000000001; #5 check(10'b0000000000);
         $display("\t\t TEST PASSED");
         $finish;
     end

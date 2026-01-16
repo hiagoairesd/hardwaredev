@@ -283,7 +283,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING REGS TESTS [1] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd1);
             check_reg(2, DUT.rb_inst.regs[2], 32'd2);
             check_reg(3, DUT.rb_inst.regs[3], 32'd3);
@@ -301,7 +301,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "------", `ANSI_RST});
+            $display({`ANSI_BOLD, "--------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd42);
             check_mem(0, DUT.data_mem_inst.mem[0], 32'd42);
             check_reg(2, DUT.rb_inst.regs[2], 32'd42);
@@ -319,7 +319,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BORDER SW/LW TESTS [3] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-----", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1],           32'd32767);
             check_reg(2, DUT.rb_inst.regs[2],          -32'sd32768);
             check_reg(3, DUT.rb_inst.regs[3],          -32'sd1);
@@ -340,7 +340,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING R-TYPE (ALU) TESTS [4] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-----", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd5);
             check_reg(2, DUT.rb_inst.regs[2], 32'd3);
             check_reg(3, DUT.rb_inst.regs[3], 32'd8);
@@ -363,7 +363,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING JMP TESTS [5] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd1);
             check_reg(2, DUT.rb_inst.regs[2], 32'd0);
             check_reg(3, DUT.rb_inst.regs[3], 32'd0);
@@ -382,7 +382,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BEQ TESTS [6] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd5);
             check_reg(2, DUT.rb_inst.regs[2], 32'd5);
             check_reg(3, DUT.rb_inst.regs[3], 32'd0);
@@ -403,7 +403,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING ANDi TESTS [7] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
             check_reg(2, DUT.rb_inst.regs[2], 32'd305398015);
             check_reg(3, DUT.rb_inst.regs[3], 32'd15);
@@ -424,7 +424,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING ORi TESTS [8] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd0);
             check_reg(2, DUT.rb_inst.regs[2], 32'd1);
             check_reg(3, DUT.rb_inst.regs[3], 32'd241);
@@ -446,7 +446,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING LUI TESTS [9] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
             check_reg(2, DUT.rb_inst.regs[2], 32'd0);
             check_reg(3, DUT.rb_inst.regs[3], 32'd4294901760);
@@ -468,7 +468,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING SLL TESTS [10] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd1);
             check_reg(2, DUT.rb_inst.regs[2], 32'd16);
             check_reg(3, DUT.rb_inst.regs[3], 32'd32);
@@ -490,7 +490,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING SRL TESTS [11] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd2147483648);
             check_reg(2, DUT.rb_inst.regs[2], 32'd1073741824);
             check_reg(3, DUT.rb_inst.regs[3], 32'd240);
@@ -512,7 +512,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BNE TESTS [12] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1, DUT.rb_inst.regs[1], 32'd1);
             check_reg(2, DUT.rb_inst.regs[2], 32'd2);
             check_reg(3, DUT.rb_inst.regs[3], 32'd0);
@@ -534,7 +534,7 @@ module cpu_top_test();
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING INTEGRATION TESTS [default] ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
             check_reg(1,  DUT.rb_inst.regs[1],      32'd10);
             check_reg(2,  DUT.rb_inst.regs[2],      32'd15);
             check_reg(3,  DUT.rb_inst.regs[3],      32'd65536);
@@ -626,7 +626,7 @@ module cpu_top_test();
             // Summary banner for PASS
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, `ANSI_GRN, " TESTS PASSED ", `ANSI_RST});
-            $display({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $display({`ANSI_BOLD, "-------------------------", `ANSI_RST});
         end
     endtask
     

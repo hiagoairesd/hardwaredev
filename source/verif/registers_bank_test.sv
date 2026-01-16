@@ -1,19 +1,22 @@
 module registers_bank_test();
 
+    localparam DATA_W = 32;
+    localparam NREGS = 32;
+    localparam int REG_W = $clog2(NREGS);
+
     // input declarations
     logic clock = 0;
     logic reset = 1;
 
     logic       wr;
-    logic [1:0] wraddr; 
-    logic [1:0] rda1;
-    logic [1:0] rda2;
-    logic [7:0] data_in;
+    logic [REG_W-1:0 ] wraddr; 
+    logic [REG_W-1:0 ] rda1;
+    logic [REG_W-1:0 ] rda2;
+    logic [DATA_W-1:0] data_in;
 
     // output declarations
-    wire [7:0] data_out1;
-    wire [7:0] data_out2;
-
+    wire [DATA_W-1:0] data_out1;
+    wire [DATA_W-1:0] data_out2;
     // clock generation
     always #5 clock =~clock;
 
@@ -22,13 +25,17 @@ module registers_bank_test();
     end
 
     // module instantiation
-    registers_bank DUT(
+    registers_bank
+    #(
+        .DATA_W(DATA_W),
+        .NREGS(NREGS)
+    ) DUT (
         .clk        (clock),
         .rst        (reset),
         .wr         (wr),
-        .wraddr     (wraddr),
-        .rda1       (rda1),
-        .rda2       (rda2),
+        .rd     (wraddr),
+        .rs1       (rda1),
+        .rs2       (rda2),
         .data_in    (data_in),
         .data_out1  (data_out1),
         .data_out2 (data_out2)

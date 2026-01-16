@@ -1,5 +1,5 @@
 module alu #(
-    parameter DATA_W = 4
+    parameter DATA_W = 32
 ) (
     input  wire [2:0]       opcode,
     input  wire [DATA_W-1:0] in_a,
