@@ -16,9 +16,11 @@ module alu #(
             3'b011 : out = in_b << in_a;     // sll
             3'b100 : out = in_b >> in_a;     // srl
             3'b101 : out = in_b << 16;       // lui
-            3'b111 : out = (in_a < in_b) ? {{DATA_W-1{1'b0}}, 1'b1} : {DATA_W{1'b0}}; // set less than
+            3'b111 : out = ($signed(in_a) < $signed(in_b))
+                ? {{DATA_W-1{1'b0}}, 1'b1}
+                : {DATA_W{1'b0}};           // slt
             default: out = {DATA_W{1'b0}};
         endcase
     end
-    assign is_zero = (out == {DATA_W{1'b0}}) ? 1'b1 : 1'b0;
+    assign is_zero = (out == {DATA_W{1'b0}});
 endmodule
