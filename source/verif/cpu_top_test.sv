@@ -193,19 +193,20 @@ module cpu_top_test();
                 1:  $readmemh("../source/verif/assembly/regs.hex",               DUT.instr_mem_inst.mem);
                 2:  $readmemh("../source/verif/assembly/basic_swlw.hex",         DUT.instr_mem_inst.mem);
                 3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.instr_mem_inst.mem);
-                4:  $readmemh("../source/verif/assembly/rtype.hex",             DUT.instr_mem_inst.mem);
-                5:  $readmemh("../source/verif/assembly/jump.hex",              DUT.instr_mem_inst.mem);
-                6:  $readmemh("../source/verif/assembly/beq.hex",               DUT.instr_mem_inst.mem);
-                7:  $readmemh("../source/verif/assembly/andi.hex",              DUT.instr_mem_inst.mem);
-                8:  $readmemh("../source/verif/assembly/ori.hex",               DUT.instr_mem_inst.mem);
-                9:  $readmemh("../source/verif/assembly/lui.hex",               DUT.instr_mem_inst.mem);
-                10: $readmemh("../source/verif/assembly/sll.hex",               DUT.instr_mem_inst.mem);
-                11: $readmemh("../source/verif/assembly/srl.hex",               DUT.instr_mem_inst.mem);
-                12: $readmemh("../source/verif/assembly/bne.hex",               DUT.instr_mem_inst.mem);
-                13: $readmemh("../source/verif/assembly/fibonacci.hex",         DUT.instr_mem_inst.mem);
-                14: $readmemh("../source/verif/assembly/fibonacci_overflow.hex",DUT.instr_mem_inst.mem);
+                4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.instr_mem_inst.mem);
+                5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.instr_mem_inst.mem);
+                6:  $readmemh("../source/verif/assembly/beq.hex",                DUT.instr_mem_inst.mem);
+                7:  $readmemh("../source/verif/assembly/andi.hex",               DUT.instr_mem_inst.mem);
+                8:  $readmemh("../source/verif/assembly/ori.hex",                DUT.instr_mem_inst.mem);
+                9:  $readmemh("../source/verif/assembly/lui.hex",                DUT.instr_mem_inst.mem);
+                10: $readmemh("../source/verif/assembly/sll.hex",                DUT.instr_mem_inst.mem);
+                11: $readmemh("../source/verif/assembly/srl.hex",                DUT.instr_mem_inst.mem);
+                12: $readmemh("../source/verif/assembly/bne.hex",                DUT.instr_mem_inst.mem);
+                13: $readmemh("../source/verif/assembly/blt.hex",                DUT.instr_mem_inst.mem);
+                14: $readmemh("../source/verif/assembly/fibonacci.hex",          DUT.instr_mem_inst.mem);
+                15: $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.instr_mem_inst.mem);
                 default:
-                    $readmemh("../source/verif/assembly/integration.hex",       DUT.instr_mem_inst.mem);
+                    $readmemh("../source/verif/assembly/integration.hex",        DUT.instr_mem_inst.mem);
             endcase
         end
     endtask
@@ -522,7 +523,23 @@ module cpu_top_test();
             check_mem(0, DUT.data_mem_inst.mem[0], 32'd13107);
         end
     endtask
-
+    //------------------------------------------------------------------------------
+    // check_blt()
+    // Test goal:
+    //   - Validates BLT behavior (taken) (test_id=13).
+    // PASS criteria:
+    //   - Expected regs + memory results.
+    //------------------------------------------------------------------------------
+    task automatic check_blt;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING BLT TESTS [13] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------------", `ANSI_RST});
+            check_mem(0, DUT.data_mem_inst.mem[0], 32'd1);
+            check_mem(1, DUT.data_mem_inst.mem[1], 32'd1);
+            check_mem(2, DUT.data_mem_inst.mem[2], 32'd1);
+        end
+    endtask
     //------------------------------------------------------------------------------
     // check_integration()
     // Test goal:
@@ -620,6 +637,7 @@ module cpu_top_test();
                 10: check_sll();
                 11: check_srl();
                 12: check_bne();
+                13: check_blt();
                 default: check_integration();
             endcase
 

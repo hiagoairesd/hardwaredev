@@ -31,16 +31,17 @@ module control_unit #(
             6'b101011: word = 10'b0x101001x0;   // SW   (store word)
             6'b000100: word = 10'b0x011010x0;   // BEQ  (branch if equal)
             6'b000101: word = 10'b0x011010x0;   // BNE  (branch if not equal)
+            6'b000110: word = 10'b0x011010x0;   // BLT  (branch if less than)
             6'b001000: word = 10'b1010100000;   // ADDi (add imm)
             6'b001101: word = 10'b1010010000;   // ORi  (or imm)
             6'b000010: word = 10'b0xxxxxxxx1;   // JMP  (jump)
             6'b001100: word = 10'b1010000000;   // ANDi (and imm)
             6'b001111: word = 10'b1011010000;   // LUI  (load upper immediate)
             OP_HALT: begin
-                word = 10'b0000000000;            // HALT
+                word = 10'b0000000000;          // HALT
                 halt = 1'b1;
             end
-            default: word = 10'b0000000000;       // NOP or undefined instruction
+            default: word = 10'b0000000000;     // NOP or undefined instruction
         endcase
     end
 endmodule

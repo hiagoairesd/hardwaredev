@@ -228,8 +228,7 @@ module cpu_top #(
     // Writeback:
     //   - memtoReg=1 selects dm_data (load)
     //   - memtoReg=0 selects alu_out
-    assign rb_wdata =
-        (memtoReg) ? dm_data : alu_out;
+    assign rb_wdata = (memtoReg)? dm_data : alu_out;
 
     //==============================================================================
     // 8) PC next logic (pc_plus1 / branch / jump selection)
@@ -237,14 +236,31 @@ module cpu_top #(
 
     wire [ADDR_W-1:0] pc_plus1  = pc + 1;
 
+    // Signed comparison for BLT (control logic, not ALU)
+    wire signed_less;
+    assign signed_less = ($signed(rb_data_out1) < $signed(rb_data_out2));
+
     // Branch handling:
-    //   - branch_NEQ is true for BNE opcode (000101)
+    //   - is_bne is true for BNE opcode (000101)
+    //   - is_blt is true for BLT opcode (000110)
+    //   - is_beq is true for BEQ opcode (000100)
     //   - is_zero comes from ALU compare (typically subtraction result == 0)
     //   - For BEQ: take_branch when is_zero==1
     //   - For BNE: take_branch when is_zero==0
-    wire branch_NEQ   = (opcode == 6'b000101);
-    wire take_branch  = branch & (is_zero ^ branch_NEQ);
+    //   - For BLT: take_branch when signed_less==1
 
+    wire is_bne   = (opcode == 6'b000101);
+    wire is_blt   = (opcode == 6'b000110);
+    wire is_beq   = (opcode == 6'b000100);
+
+    wire take_branch;
+    
+    assign take_branch =
+        is_beq ?  (branch &  is_zero)     :
+        is_bne ?  (branch & ~is_zero)     :
+        is_blt ?  (branch &  signed_less) :
+                  1'b0;
+    
     // Branch target uses low ADDR_W bits of imm_ext
     wire [ADDR_W-1:0] pc_branch = pc_plus1 + imm_ext[ADDR_W-1:0];
 
