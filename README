@@ -46,31 +46,58 @@ This repository contains the complete implementation of a **single-cycle MIPS-li
 hardwaredev/
 ├── README                          # This file
 ├── simu/                           # Simulation scripts and outputs
-│   ├── simu.sh                     # Simulation script for Xcelium
 │   ├── simu_icarus.sh              # Simulation script for Icarus
+│   ├── simu_xcelium.sh             # Simulation script for Xcelium
 │   └── simu.tcl                    # Xcelium simulation configuration
 ├── source/                         # Source code
 │   ├── design/                     # Hardware design modules
-│   │   ├── LASD/                   # Main CPU implementation (3 modules)
-│   │   │   ├── mod1/               # Register file and displacer circuits
-│   │   │   ├── mod2/               # ALU and arithmetic components
-│   │   │   ├── mod3/               # Control unit and memory
-│   │   │   └── cpu_top.v           # CPU top-level module
+│   │   ├── single_cycle/           # Single-cycle CPU implementation
+│   │   │   ├── alu.v               # Arithmetic Logic Unit
+│   │   │   ├── control_unit.v      # Instruction decoder and control
+│   │   │   ├── cpu_top.v           # CPU top-level module
+│   │   │   ├── data_mem.v          # Data memory (256×32-bit)
+│   │   │   ├── instr_mem.v         # Instruction memory (256×32-bit)
+│   │   │   └── registers_bank.v    # Register file (32×32-bit)
 │   │   └── practices/              # Practice exercises and learning modules
-│   │       ├── alu.v               # ALU implementation
+│   │       ├── alu_prac.v          # ALU practice implementation
+│   │       ├── controller.v        # Controller practice module
+│   │       ├── converter_*.v       # Binary/Gray/OneHot converters
 │   │       ├── counter.v           # Counter circuits
+│   │       ├── displacer.v         # Barrel shifter
+│   │       ├── displacer_reg.v     # Registered shifter
+│   │       ├── driver.v            # Driver circuits
+│   │       ├── fifo.v              # FIFO memory
+│   │       ├── lib.v               # Library functions
 │   │       ├── memory.v            # Memory modules
+│   │       ├── multiplexor.v       # Multiplexer circuits
+│   │       ├── proc_ripple_carry_adder.v  # Procedural adder
+│   │       ├── reg_reset.v         # Register with reset
 │   │       ├── register.v          # Register modules
-│   │       └── [other learning modules]
+│   │       ├── struct_ripple_carry_adder.v # Structural adder
+│   │       └── using_function_counter.v   # Counter with functions
 │   └── verif/                      # Verification and testing
-│       ├── cpu_top_test.sv         # Main testbench for CPU (SystemVerilog)
-│       ├── *_test.sv/.v            # Component-level testbenches
-│       └── assembly/               # Test programs
+│       ├── alu_test.sv             # ALU testbench
+│       ├── control_unit_test.sv    # Control unit testbench
+│       ├── converter_gray_bin_test.sv # Gray converter testbench
+│       ├── cpu_top_test.sv         # Main CPU testbench (14+ tests)
+│       ├── fifo_test.sv            # FIFO testbench
+│       ├── registers_bank_test.sv  # Register file testbench
+│       └── assembly/               # Test programs (hex files)
 │           ├── regs.hex            # Register initialization test
 │           ├── basic_swlw.hex      # Basic store/load operations
+│           ├── border_swlw.hex     # Boundary value testing
 │           ├── rtype.hex           # R-type ALU operations
-│           ├── fibonacci.hex       # Fibonacci calculation
-│           └── [other test programs]
+│           ├── jump.hex            # Jump instruction test
+│           ├── beq.hex             # Branch on Equal test
+│           ├── andi.hex            # AND Immediate test
+│           ├── ori.hex             # OR Immediate test
+│           ├── lui.hex             # Load Upper Immediate test
+│           ├── sll.hex             # Shift Left Logical test
+│           ├── srl.hex             # Shift Right Logical test
+│           ├── bne.hex             # Branch on Not Equal test
+│           ├── fibonacci.hex       # Fibonacci sequence test
+│           ├── fibonacci_overflow.hex # Fibonacci with overflow
+│           └── integration.hex     # Integration test program
 └── synth/                          # Synthesis tools and scripts
     ├── synth_yosys.ys              # Yosys synthesis configuration
     ├── synth_genus.tcl             # Cadence Genus synthesis config
@@ -97,52 +124,74 @@ Main processor module integrating all subcomponents:
 - `rst`: Reset signal (active high)
 - `halted`: Halt indication output
 
-### 2. **Module 1 - Register File & Displacer** (`source/design/LASD/mod1/`)
+### 2. **Single-Cycle CPU Components** (`source/design/single_cycle/`)
 
-- `registers_bank.v`: 32-register file with read/write ports
-- `displacer.v`: Barrel shifter for shift operations
-- `displacer_reg.v`: Registered shifter variant
+Core processor modules:
 
-### 3. **Module 2 - ALU** (`source/design/LASD/mod2/`)
+- `alu.v`: Arithmetic Logic Unit (32-bit operations)
+  - Supports: ADD, SUB, AND, OR, SLT operations
+  - Generates is_zero flag
+  
+- `control_unit.v`: Instruction decoder
+  - Converts 32-bit instruction to 10-bit control word
+  - Supports all instruction types (R, I, J)
+  
+- `registers_bank.v`: Register file
+  - 32 general-purpose registers (32 bits each)
+  - Dual read ports, single write port
+  - Asynchronous read, synchronous write
+  
+- `instr_mem.v`: Instruction memory
+  - 256 positions × 32 bits
+  - 8-bit address input
+  - Combinational read output
+  
+- `data_mem.v`: Data memory
+  - 256 positions × 32 bits
+  - Read/write control signals
+  - 8-bit address input
 
-- `alu.v`: Arithmetic Logic Unit (4/32-bit configurable)
-- `proc_ripple_carry_adder.v`: Parameterized adder
-- `struct_ripple_carry_adder.v`: Structural adder implementation
-- `reg_reset.v`: Registered circuits with async reset
+### 3. **Practice Modules** (`source/design/practices/`)
 
-### 4. **Module 3 - Control & Memory** (`source/design/LASD/mod3/`)
+Learning and reference implementations (21 modules):
 
-- `control_unit.v`: Instruction decoder (32-bit → 10-bit control word)
-- `instr_mem.v`: Instruction memory (256×32-bit)
-- `data_mem.v`: Data memory (256×32-bit)
+**Converters:**
+- `converter_bin_gray.v`, `converter_gray_bin.v`
+- `converter_bin_onehot.v`, `converter_onehot_bin.v`
+- `converter_bin_onecold.v`, `converter_onecold_bin.v`
 
-### 5. **Testbench** (`source/verif/cpu_top_test.sv`)
+**Memory & Registers:**
+- `register.v`, `reg_reset.v`, `memory.v`, `fifo.v`
 
-Comprehensive verification environment:
+**Arithmetic:**
+- `proc_ripple_carry_adder.v`, `struct_ripple_carry_adder.v`
+- `alu_prac.v`
 
-**Features:**
-- 14+ test suites covering instruction types
-- Register and memory result verification
-- Execution trace (PC, instruction, opcode, register writes)
-- Automatic HALT detection and timeout protection
-- ANSI color output for clear reporting
+**Control & Logic:**
+- `counter.v`, `using_function_counter.v`
+- `displacer.v`, `displacer_reg.v`
+- `multiplexor.v`, `driver.v`, `controller.v`, `lib.v`
 
-**Test Cases:**
-1. Register initialization
-2. Store/Load basic operations
-3. Boundary value testing
-4. R-type ALU operations
-5. Jump instructions
-6. Branch on Equal (BEQ)
-7. AND Immediate (ANDI)
-8. OR Immediate (ORI)
-9. Load Upper Immediate (LUI)
-10. Shift Left Logical (SLL)
-11. Shift Right Logical (SRL)
-12. Branch on Not Equal (BNE)
-13. Fibonacci sequence (simple)
-14. Fibonacci sequence (overflow tes)
-15. Integration tests
+### 4. **Testbenches** (`source/verif/`)
+
+Comprehensive verification modules:
+
+- `cpu_top_test.sv`: Main CPU testbench (14+ test cases)
+- `alu_test.sv`: ALU unit test
+- `control_unit_test.sv`: Control unit verification
+- `registers_bank_test.sv`: Register file testbench
+- `fifo_test.sv`: FIFO buffer test
+- `converter_gray_bin_test.sv`: Converter testbench
+
+### 5. **Assembly Test Programs** (`source/verif/assembly/`)
+
+15 test programs in MIPS-like assembly (hex format):
+- `regs.hex`, `basic_swlw.hex`, `border_swlw.hex`
+- `rtype.hex`, `jump.hex`, `beq.hex`, `bne.hex`
+- `andi.hex`, `ori.hex`, `lui.hex`
+- `sll.hex`, `srl.hex`
+- `fibonacci.hex`, `fibonacci_overflow.hex`
+- `integration.hex`
 
 ---
 
@@ -272,11 +321,11 @@ done
 ```bash
 # Test ALU module
 cd source/verif/
-iverilog -o alu_test ../design/LASD/mod2/alu.v alu_tb.v
+iverilog -o alu_test ../design/single_cycle/alu.v alu_tb.v
 vvp alu_test
 
 # Test other components
-iverilog -o control_test ../design/LASD/mod3/control_unit.v control_unit_test.sv
+iverilog -o control_test ../design/single_cycle/control_unit.v control_unit_test.sv
 vvp control_test
 ```
 
@@ -355,37 +404,67 @@ gtkwave simu/cpu_top.vcd
 
 ## 📄 File Descriptions
 
-### Design Files (`source/design/LASD/`)
+### Design Files - Single Cycle (`source/design/single_cycle/`)
 
-|           File         | Lines|       Description        |
-|------------------------|------|--------------------------|
-| `cpu_top.v`            | ~200 | Main processor top-level |
-| `mod1/registers_bank.v`| ~50  | 32×32-bit register file  |
-| `mod2/alu.v`           | ~30  | Parameterized ALU        |
-| `mod3/control_unit.v`  | ~80  | Instruction decoder      |
-| `mod3/instr_mem.v`     | ~20  | Instruction memory       |
-| `mod3/data_mem.v`      | ~20  | Data memory              |
+|       File            | Lines |           Description              |
+|-----------------------|-------|------------------------------------|
+| `cpu_top.v`           | ~200  | Main processor top-level           |
+| `alu.v`               | ~30   | 32-bit Arithmetic Logic Unit       |
+| `registers_bank.v`    | ~50   | 32-register file (32×32-bit)       |
+| `control_unit.v`      | ~80   | Instruction decoder (32→10 bits)   |
+| `instr_mem.v`         | ~20   | Instruction memory (256×32-bit)    |
+| `data_mem.v`          | ~20   | Data memory (256×32-bit)           |
+
+### Practice Modules (`source/design/practices/`)
+
+|           File               | Purpose                              |
+|------------------------------|--------------------------------------|
+| `converter_*.v`              | Binary/Gray/OneHot/OneCold converters|
+| `counter.v`                  | Counter circuits                     |
+| `displacer.v`                | Barrel shifter                       |
+| `displacer_reg.v`            | Registered shifter                   |
+| `register.v`                 | Basic register implementation        |
+| `reg_reset.v`                | Register with async reset            |
+| `memory.v`                   | Generic memory module                |
+| `fifo.v`                     | FIFO buffer                          |
+| `alu_prac.v`                 | Practice ALU implementation          |
+| `proc_ripple_carry_adder.v`  | Procedural adder                     |
+| `struct_ripple_carry_adder.v`| Structural adder                     |
+| `multiplexor.v`              | Multiplexer circuits                 |
+| `driver.v`                   | Driver circuits                      |
+| `controller.v`               | Control logic                        |
+| `lib.v`                      | Library functions                    |
 
 ### Testbench Files (`source/verif/`)
 
-|           File           |            Purpose                |
-|--------------------------|-----------------------------------|
-| `cpu_top_test.sv`        | Main CPU verification (14+ tests) |
-| `alu_tb.v`               | ALU unit test                     |
-| `control_unit_test.sv`   | Control unit verification         |
-| `registers_bank_test.sv` | Register file verification        |
+|           File           |             Purpose                   |
+|--------------------------|---------------------------------------|
+| `cpu_top_test.sv`        | Main CPU testbench (14+ test cases)   |
+| `alu_test.sv`            | ALU unit test                         |
+| `control_unit_test.sv`   | Control unit verification             |
+| `registers_bank_test.sv` | Register file verification            |
+| `fifo_test.sv`           | FIFO buffer testbench                 |
+| `converter_gray_bin_test.sv` | Gray/binary converter testbench    |
 
-### Assembly Programs (`source/verif/assembly/`)
+### Assembly Test Programs (`source/verif/assembly/`)
 
-|       Program     |       Test Purpose      |
-|-------------------|-------------------------|
-| `regs.hex`        | Basic register writes   |
-| `basic_swlw.hex`  | Store/Load operations   |
-| `border_swlw.hex` | Boundary value handling |
-| `rtype.hex`       | R-type ALU instructions |
-| `jump.hex`        | Jump control flow       |
-| `beq.hex`         | Branch on Equal         |
-| `fibonacci.hex`   | Complex algorithm       |
+|       Program           |             Purpose              |
+|-------------------------|----------------------------------|
+| `regs.hex`              | Register initialization test     |
+| `basic_swlw.hex`        | Basic store/load operations      |
+| `border_swlw.hex`       | Boundary value handling          |
+| `rtype.hex`             | R-type ALU instructions          |
+| `jump.hex`              | Jump control flow                |
+| `beq.hex`               | Branch on Equal                  |
+| `bne.hex`               | Branch on Not Equal              |
+| `andi.hex`              | AND Immediate                    |
+| `ori.hex`               | OR Immediate                     |
+| `lui.hex`               | Load Upper Immediate             |
+| `sll.hex`               | Shift Left Logical               |
+| `srl.hex`               | Shift Right Logical              |
+| `fibonacci.hex`         | Fibonacci sequence calculation   |
+| `fibonacci_overflow.hex`| Fibonacci with overflow handling |
+| `integration.hex`       | Integration test program         |
 
 ---
 
