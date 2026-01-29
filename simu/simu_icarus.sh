@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="/home/hiago/Dev/hardwaredev/source"
 DESIGN="$ROOT/design"
 VERIF="$ROOT/verif"
-LASD="$DESIGN/LASD"
+SINGLE_CYCLE="$DESIGN/single_cycle"
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <dut> [vvp_args...]" >&2
@@ -17,11 +17,11 @@ out="${dut}.out"
 tb="${VERIF}/${dut}_test.sv"
 
 deps=(
-  "$LASD/mod1/registers_bank.v"
-  "$LASD/mod2/alu.v"
-  "$LASD/mod3/data_mem.v"
-  "$LASD/mod3/instr_mem.v"
-  "$LASD/mod3/control_unit.v"
+  "$SINGLE_CYCLE/registers_bank.v"
+  "$SINGLE_CYCLE/alu.v"
+  "$SINGLE_CYCLE/data_mem.v"
+  "$SINGLE_CYCLE/instr_mem.v"
+  "$SINGLE_CYCLE/control_unit.v"
 )
 
 echo "###############################################################"
