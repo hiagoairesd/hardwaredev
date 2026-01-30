@@ -1,6 +1,5 @@
 module cpu_top(
-    parameter int ADDR_W = 32,
-    parameter int DATA_W = 32
+    parameter int WIDTH = 32
 )(
     input wire clk,
     input wire rst,
@@ -16,28 +15,36 @@ module cpu_top(
     // 2) Architectural state (PC)
     //==============================================================================
     
-    reg [ADDR_W-1:0] pc;
+    // Halt signal from control unit; exported as output 'halted'
+    wire halt;
+    assign halted = halt;
+
+    // Program counter is byte-indexed (WIDTH bits)
+    reg  [WIDTH-1:0] pc;
+
+    // PC update policy:
+    //   - reset forces PC=0
+    //   - when halt is asserted, PC stops updating (freezes at current value)
 
     always @(posedge clk) begin
         if(rst)
-            pc <= {ADDR_W{1'b0}};
+            pc <= {WIDTH{1'b0}};
+        else if(!halt)
+            pc <= pc_next;
     end
 
     //==============================================================================
     // 5) Memory
     //==============================================================================
     wire IorD;  // instruction or data fetch from memory selection
-    wire [DATA_W-1:0] mem_out;                        // memory output
-    wire [ADDR_W-1:0] mem_addr = (IorD)? aluOut : pc; // memory address selection
+    wire [WIDTH-1:0] mem_out;                        // memory output
+    wire [WIDTH-1:0] mem_addr = (IorD)? aluOut : pc; // memory address selection
     
-    wire [DATA_W-1:0] mem_data_in;
+    wire [WIDTH-1:0] mem_data_in;
     assign mem_data_in =
-        (memWrite) ? rf_data_out2 : {DATA_W{1'bz}};
+        (memWrite) ? rf_data_out2 : {WIDTH{1'bz}};
 
-    memory #(
-        .DATA_W(DATA_W),
-        .ADDR_W(ADDR_W)
-    ) memory_inst (
+    memory memory_inst (
         .clk(clk),
         .we(memWrite),
         .addr(mem_addr),
@@ -47,23 +54,23 @@ module cpu_top(
 
     //------------------------------------------------------------------------------
     // Non-Architectural Instruction Register logic
-    reg [DATA_W-1:0] instr;
+    reg [WIDTH-1:0] instr;
     wire irWrite;
 
     always @(posedge clk) begin
         if (rst)
-            instr <= {DATA_W{1'b0}};
+            instr <= {WIDTH{1'b0}};
         else if (irWrite)
             instr <= mem_out;
     end
 
     //------------------------------------------------------------------------------
     // Non-Architectural Instruction Register logic
-    reg [DATA_W-1:0] mem_data_out;   // data read from memory
+    reg [WIDTH-1:0] mem_data_out;   // data read from memory
 
     always @(posedge clk) begin
         if (rst)
-            mem_data_out <= {DATA_W{1'b0}};
+            mem_data_out <= {WIDTH{1'b0}};
         else if (IorD)
             mem_data_out <= mem_out;
     end
@@ -73,7 +80,7 @@ module cpu_top(
     //==============================================================================
  
     // Decode fields (MIPS-like format)
-    wire [5:0]  opcode = instr[DATA_W-1:26];
+    wire [5:0]  opcode = instr[WIDTH-1:26];
     wire [4:0]  rs     = instr[25:21];
     wire [4:0]  rt     = instr[20:16];
     wire [4:0]  rd     = instr[15:11];
@@ -89,7 +96,7 @@ module cpu_top(
         (opcode == OP_ORI)  ||
         (opcode == OP_LUI);
 
-    wire [DATA_W-1:0] imm_ext =
+    wire [WIDTH-1:0] imm_ext =
         imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};
 
     //==============================================================================
@@ -106,9 +113,7 @@ module cpu_top(
     wire       memtoReg;            //   [1] memtoReg
     wire       jump;                //   [0] jump
 
-    cu_fsm #(
-        .CTRL_WORD_W(CTRL_WORD_W),
-    ) cu_fsm_inst (
+    cu_fsm cu_fsm_inst (
         .opcode     (opcode),
         .funct      (funct),
         .regWrite   (regWrite),
@@ -126,9 +131,9 @@ module cpu_top(
 
     wire [4:0] wa3 = (regDst) ? rd : rt;
 
-    wire [DATA_W-1:0] rf_data_out1;
-    wire [DATA_W-1:0] rf_data_out2;
-    wire [DATA_W-1:0] rf_wdata;
+    wire [WIDTH-1:0] rf_data_out1;
+    wire [WIDTH-1:0] rf_data_out2;
+    wire [WIDTH-1:0] rf_wdata;
 
     register_file rf_inst(
         .clk        (clk),
@@ -150,11 +155,11 @@ module cpu_top(
     //------------------------------------------------------------------------------
     // Non-Architectural Register File output register logic
 
-    reg [DATA_W-1:0] rf_out;
+    reg [WIDTH-1:0] rf_out;
 
     always @(posedge clk) begin
         if (rst)
-            rf_out <= {DATA_W{1'b0}};
+            rf_out <= {WIDTH{1'b0}};
         else
             rf_out <= rf_data_out1;
     end
@@ -166,21 +171,19 @@ module cpu_top(
     // ALU operand A:
     //   - for shifts: use shamt (zero-extended)
     //   - otherwise: use rs data
-    wire [DATA_W-1:0] alu_a =
+    wire [WIDTH-1:0] alu_a =
         (is_shift) ? {27'b0, shamt} : rf_data_out1;
 
     // ALU operand B:
     //   - aluSrc=1 selects imm_ext
     //   - aluSrc=0 selects rt data
-    wire [DATA_W-1:0] alu_b =
+    wire [WIDTH-1:0] alu_b =
         (aluSrc) ? imm_ext : rf_data_out2;
 
-    wire [DATA_W-1:0] aluOut;
-    wire              is_zero;
+    wire [WIDTH-1:0] aluOut;
+    wire             is_zero;
 
-    alu #(
-        .DATA_W(DATA_W)
-    ) alu_inst (
+    alu alu_inst (
         .opcode  (aluControl),
         .in_a    (alu_a),
         .in_b    (alu_b),
@@ -190,20 +193,56 @@ module cpu_top(
 
     //------------------------------------------------------------------------------
     // Non-Architectural ALU output register logic
-    reg [DATA_W-1:0] aluResult;
+    reg [WIDTH-1:0] aluResult;
 
     always @(posedge clk) begin
         if (rst)
-            aluResult <= {DATA_W{1'b0}};
+            aluResult <= {WIDTH{1'b0}};
         else
             aluResult <= aluOut;
     end
     
     //==============================================================================
-    // 8) PC next logic (pc_plus1 / branch / jump selection)
+    // 8) PC next logic (pc_plus4 / branch / jump selection)
     //==============================================================================
+     wire [WIDTH-1:0] pc_plus4  = pc + 32'd4;
 
+    // Signed comparison for BLT (control logic, not ALU)
+    wire signed_less;
+    assign signed_less = ($signed(rb_data_out1) < $signed(rb_data_out2));
 
+    // Branch handling:
+    //   - is_bne is true for BNE opcode (000101)
+    //   - is_blt is true for BLT opcode (000110)
+    //   - is_beq is true for BEQ opcode (000100)
+    //   - is_zero comes from ALU compare (typically subtraction result == 0)
+    //   - For BEQ: take_branch when is_zero==1
+    //   - For BNE: take_branch when is_zero==0
+    //   - For BLT: take_branch when signed_less==1
+
+    wire is_bne   = (opcode == 6'b000101);
+    wire is_blt   = (opcode == 6'b000110);
+    wire is_beq   = (opcode == 6'b000100);
+
+    wire take_branch;
     
+    assign take_branch =
+        is_beq ?  (branch &  is_zero)     :
+        is_bne ?  (branch & ~is_zero)     :
+        is_blt ?  (branch &  signed_less) :
+                  1'b0;
+    
+    // Branch target uses low WIDTH bits of imm_ext
+    wire [WIDTH-1:0] pc_branch = pc_plus4 + imm_ext[WIDTH-1:0];
 
+    // Jump target uses low WIDTH bits of instruction word
+    wire [WIDTH-1:0] pc_jump   = instr[WIDTH-1:0];
+
+    // Next PC selection priority:
+    //   1) jump
+    //   2) taken branch
+    //   3) sequential pc_plus4
+    wire [WIDTH-1:0] pc_next   =
+        (jump)        ? pc_jump   :
+        (take_branch) ? pc_branch : pc_plus4;
 endmodule
