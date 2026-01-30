@@ -3,7 +3,7 @@ module instr_mem #(
     parameter INSTR_W = 32,
     parameter DEPTH  = 256
 ) (
-    input  wire [ADDR_W-1:0] addr_in,
+    input  wire [ADDR_W-1:0 ] addr_in,
     output wire [INSTR_W-1:0] instr_out
 );
     reg [INSTR_W-1:0] mem [0:DEPTH-1];

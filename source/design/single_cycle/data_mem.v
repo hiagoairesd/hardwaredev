@@ -9,7 +9,6 @@ module data_mem #(
 );
     reg [DATA_W-1 :0] mem [0:2**ADDR_W-1];
     
-    
     integer i;
     initial begin
         for (i = 0; i < 2**ADDR_W; i = i +1) begin
