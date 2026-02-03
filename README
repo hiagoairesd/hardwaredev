@@ -437,14 +437,14 @@ gtkwave simu/cpu_top.vcd
 
 ### Testbench Files (`source/verif/`)
 
-|           File           |             Purpose                   |
-|--------------------------|---------------------------------------|
-| `cpu_top_test.sv`        | Main CPU testbench (14+ test cases)   |
-| `alu_test.sv`            | ALU unit test                         |
-| `control_unit_test.sv`   | Control unit verification             |
-| `registers_bank_test.sv` | Register file verification            |
-| `fifo_test.sv`           | FIFO buffer testbench                 |
-| `converter_gray_bin_test.sv` | Gray/binary converter testbench    |
+|           File               |             Purpose                   |
+|------------------------------|---------------------------------------|
+| `cpu_top_test.sv`            | Main CPU testbench (14+ test cases)   |
+| `alu_test.sv`                | ALU unit test                         |
+| `control_unit_test.sv`       | Control unit verification             |
+| `registers_bank_test.sv`     | Register file verification            |
+| `fifo_test.sv`               | FIFO buffer testbench                 |
+| `converter_gray_bin_test.sv` | Gray/binary converter testbench       |
 
 ### Assembly Test Programs (`source/verif/assembly/`)
 

@@ -1,11 +1,11 @@
 module alu #(
     parameter DATA_W = 32
 ) (
-    input  wire [2:0]       opcode,
+    input  wire [2:0]        opcode,
     input  wire [DATA_W-1:0] in_a,
     input  wire [DATA_W-1:0] in_b,
     output reg  [DATA_W-1:0] out,
-    output wire             is_zero
+    output wire              is_zero
 );
     always @* begin
         case (opcode)
