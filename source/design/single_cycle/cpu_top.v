@@ -256,9 +256,9 @@ module cpu_top #(
     wire take_branch;
     
     assign take_branch =
-        is_beq ?  (branch &  is_zero)     :
-        is_bne ?  (branch & ~is_zero)     :
-        is_blt ?  (branch &  signed_less) :
+        is_beq ?  ( is_zero)     :
+        is_bne ?  (~is_zero)     :
+        is_blt ?  ( signed_less) :
                   1'b0;
     
     // Branch target uses low ADDR_W bits of imm_ext
