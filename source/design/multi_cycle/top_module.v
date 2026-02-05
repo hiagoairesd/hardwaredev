@@ -13,8 +13,34 @@ module cpu_top(
 
 
     //==============================================================================
-    // 2) Architectural state (PC)
+    // 2) Architectural state (PC) + halt interface
     //==============================================================================
+    // Halt signal from control unit; exported as output 'halted'
+    wire halt;
+
+    // Branch condition signals
+    wire signed_less; // Set by ALU for signed comparisons
+    wire is_bne   = (opcode == 6'b000101);
+    wire is_blt   = (opcode == 6'b000110);
+    wire is_beq   = (opcode == 6'b000100);
+
+
+    // Program counter is byte-indexed (DATA_W bits)
+    reg  [ADDR_W-1:0] pc;
+    wire [ADDR_W-1:0] pc_next;
+    wire PCWrite;
+    wire PCSrc;
+    wire PCEn;
+
+    assign take_branch =
+        is_beq ? (is_zero)     :
+        is_bne ? (~is_zero)    :
+        is_blt ? (signed_less) :
+                  1'b0;
+
+    assign PCEn = (PCWrite || take_branch) && !halt;
+    assign pc_next = (PCSrc)? alu_reg : alu_out; // Placeholder for PC next logic
+    assign halted = halt;
 
     // PC update policy:
     //   - reset forces PC=0
@@ -22,9 +48,9 @@ module cpu_top(
 
     always @(posedge clk) begin
         if(rst)
-            pc <= {DATA_W{1'b0}};
-        else if(PCWrite && !halt)
-            pc <= pc_in;
+            pc <= {ADDR_W{1'b0}};
+        else if(PCEn)
+            pc <= pc_next;
     end
 
     //==============================================================================
@@ -32,9 +58,10 @@ module cpu_top(
     //==============================================================================
     wire IorD;  // instruction or data fetch from memory selection
     wire [DATA_W-1:0] mem_out;       // memory output
-    wire [DATA_W-1:0] mem_addr = (IorD)? alu_reg : pc; 
+    wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc; 
     // memory address selection: 1 for data, 0 for instruction
-    wire [ADDR_W-1:0] mem_addr_word = mem_addr[ADDR_W+1:2];
+
+    wire [ADDR_W-1:0] mem_addr_word = mem_addr[ADDR_W+1:2]; // word-aligned address
 
     wire [DATA_W-1:0] mem_data_in = rf_regB;
 
@@ -171,17 +198,16 @@ module cpu_top(
     // ALU operand A:
     //   - aluSrcA=1 selects PC
     //   - aluSrcA=0 selects rs data
-    wire [DATA_W-1:0] alu_a = (aluSrcA)? pc : rf_data_out1;
+    wire [DATA_W-1:0] alu_a = (aluSrcA)? rf_regA : pc;
 
     // ALU operand B:
     //   - aluSrc=1 selects imm_ext
     //   - aluSrc=0 selects rt data
     wire [DATA_W-1:0] alu_b =
-        (aluSrcB == 2'b00) ? rf_data_out2              :
-        (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4} :
-        (aluSrcB == 2'b10) ? imm_ext                   :
-        (aluSrcB == 2'b11) ? (imm_ext << 2)            :
-                             {DATA_W{1'b0}}; // default/fallback
+        (aluSrcB == 2'b00) ? rf_regB                     :
+        (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4}  :
+        (aluSrcB == 2'b10) ? imm_ext                     :
+        (aluSrcB == 2'b11) ? (imm_ext << 2);
 
     wire [DATA_W-1:0] alu_out;
     wire             is_zero;
@@ -204,18 +230,5 @@ module cpu_top(
         else
             alu_reg <= alu_out;
     end
-    
-    //==============================================================================
-    // 8) PC next logic (pc_plus4 / branch / jump selection)
-    //==============================================================================
-    // Halt signal from control unit; exported as output 'halted'
-    wire halt;
-    assign halted = halt;
-
-    // Program counter is byte-indexed (DATA_W bits)
-    reg  [DATA_W-1:0] pc;
-    wire PCWrite;
-    wire [DATA_W-1:0] pc_in;
-
-    assign pc_in = alu_out; // Placeholder for PC next logic
 endmodule
+    
