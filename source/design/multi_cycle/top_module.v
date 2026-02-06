@@ -24,7 +24,6 @@ module cpu_top(
     wire is_blt   = (opcode == 6'b000110);
     wire is_beq   = (opcode == 6'b000100);
 
-
     // Program counter is byte-indexed (DATA_W bits)
     reg  [ADDR_W-1:0] pc;
     wire [ADDR_W-1:0] pc_next;
@@ -76,12 +75,12 @@ module cpu_top(
     //------------------------------------------------------------------------------
     // Non-Architectural Instruction Register logic
     reg [DATA_W-1:0] instr;
-    wire irWrite;
+    wire IRWrite;
 
     always @(posedge clk) begin
         if (rst)
             instr <= {DATA_W{1'b0}};
-        else if (irWrite)
+        else if (IRWrite)
             instr <= mem_out;
     end
 
@@ -201,8 +200,10 @@ module cpu_top(
     wire [DATA_W-1:0] alu_a = (aluSrcA)? rf_regA : pc;
 
     // ALU operand B:
-    //   - aluSrc=1 selects imm_ext
-    //   - aluSrc=0 selects rt data
+    //   - aluSrcB=0 selects rt data
+    //   - aluSrcB=1 selects 4
+    //   - aluSrcB=2 selects imm_ext
+    //   - aluSrcB=3 selects imm_ext << 2
     wire [DATA_W-1:0] alu_b =
         (aluSrcB == 2'b00) ? rf_regB                     :
         (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4}  :
