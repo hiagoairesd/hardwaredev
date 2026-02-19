@@ -87,10 +87,9 @@ module cu_fsm #(
                 aluSrcB    = 2'b01;     // 4 for PC + 4
                 aluControl = 3'b010;    // add
                 PCSrc      = 1'b0;      // PC + 4
-                //------------------------------------------------------------------------------
-                memWrite   = 1'b0;      // no memory write      // necessario
-                branch     = 1'b0;      // no branch            // declarar?
-                regWrite   = 1'b0;      // no register write    //  ?
+                memWrite   = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S1) Decode state: decode instruction and read registers
@@ -98,12 +97,11 @@ module cu_fsm #(
                 aluSrcA    = 1'b0;      // PC as ALU input A
                 aluSrcB    = 2'b11;     // sign-extended immediate << 2 for branch address calculation
                 aluControl = 3'b010;    // add (for branch address calculation)
-                //------------------------------------------------------------------------------
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                branch     = 1'b0;      // no branch                                    // declarar?
-                regWrite   = 1'b0;      // no register write                            //  ?
-                PCWrite    = 1'b0;      // no PC update in decode stage
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
+                memWrite   = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                IRWrite    = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S2) Memory address calculation state: calculate address for load/store
@@ -111,23 +109,21 @@ module cu_fsm #(
                 aluSrcA    = 1'b1;      // rs data as ALU input A
                 aluSrcB    = 2'b10;     // sign-extended immediate for memory address calculation
                 aluControl = 3'b010;    // add (for memory address calculation)
-                //------------------------------------------------------------------------------
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                branch     = 1'b0;      // no branch                                    // declarar?
-                regWrite   = 1'b0;      // no register write                            //  ?
-                PCWrite    = 1'b0;      // no PC update in decode stage
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
+                memWrite   = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                IRWrite    = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S3) Memory read state: read data from memory
             MEM_READ: begin
                 IorD       = 1'b1;      // data memory access
-                //------------------------------------------------------------------------------
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                PCWrite    = 1'b0;      // no PC update in decode stage                 // declarar?
-                branch     = 1'b0;      // no branch                                    //  ?
-                regWrite   = 1'b0;      // no register write                            //  ?
+                IRWrite    = 1'b0;
+                memWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S4) Memory writeback state: write data back to register
@@ -135,22 +131,20 @@ module cu_fsm #(
                 memtoReg    = 1'b1;      // select memory data for register writeback
                 regDst      = 1'b0;      // select rt as destination register
                 regWrite    = 1'b1;      // enable register writeback
-                //------------------------------------------------------------------------------
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                PCWrite    = 1'b0;      // no PC update in decode stage                 // declarar?
-                branch     = 1'b0;      // no branch                                    //  ?
+                IRWrite    = 1'b0;
+                memWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                branch     = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S5) Memory write state: write data to memory
             MEM_WRITE: begin
                 IorD       = 1'b1;      // data memory access
                 memWrite   = 1'b1;      // enable memory write
-                //------------------------------------------------------------------------------
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
-                PCWrite    = 1'b0;      // no PC update in decode stage                 // declarar?
-                branch     = 1'b0;      // no branch                                    //  ?
-                regWrite   = 1'b0;      // no register write                            //
+                IRWrite    = 1'b0;
+                PCWrite    = 1'b0; 
+                branch     = 1'b0;
+                regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S6) Execute state: perform ALU operations
@@ -158,12 +152,11 @@ module cu_fsm #(
                 aluSrcA    = 1'b1;
                 aluSrcB    = 2'b01;
                 aluOp      = 2'b10; //??????
-                //------------------------------------------------------------------------------
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                PCWrite    = 1'b0;      // no PC update in decode stage                 // declarar?
-                branch     = 1'b0;      // no branch                                    //  ?
-                regWrite   = 1'b0;      // no register write                            //
+                IRWrite    = 1'b0;
+                memWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S7) ALU writeback state: write ALU result back to register
@@ -171,11 +164,10 @@ module cu_fsm #(
                 regDst      = 1'b1;      // select rd as destination register
                 memtoReg    = 1'b0;      // select ALU result for register writeback
                 regWrite    = 1'b1;      // enable register writeback
-                //------------------------------------------------------------------------------
-                IRWrite    = 1'b0;      // no instruction register write in decode stage
-                memWrite   = 1'b0;      // no memory write                              // necessario
-                PCWrite    = 1'b0;      // no PC update in decode stage                 // declarar?
-                branch     = 1'b0;      // no branch                                    //
+                IRWrite    = 1'b0;
+                memWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                branch     = 1'b0;
             end
         //------------------------------------------------------------------------------
         // (S8) Branch state: evaluate branch condition and update PC if needed
@@ -222,7 +214,7 @@ module cu_fsm #(
         case(aluOp)
             2'b00: aluControl = 3'b010; // add (for lw/sw address calculation and addi)
             2'b01: aluControl = 3'b110; // sub (for beq)
-            2'b10: begin
+            2'b1x: begin
                 case(funct)
                     6'b100000: aluControl = 3'b010; // ADD
                     6'b100010: aluControl = 3'b110; // SUB
