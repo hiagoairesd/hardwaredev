@@ -46,6 +46,7 @@ rm "$TMP_SCRIPT"
 if [ -f "${DUT}.json" ]; then
     echo "###############################################################"
     echo -e "${BLUE}          --- Generating SVG diagram for: $DUT ---${NC}"
+
     echo "###############################################################"
     
     netlistsvg "${DUT}.json" -o "${DUT}.svg"
