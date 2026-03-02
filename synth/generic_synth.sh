@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+# ANSI color codes
+BLUE='\033[1;34m'
+RED='\033[1;31m'
+NC='\033[0m' # No Color (resets the color)
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(realpath "$SCRIPT_DIR/../source")"
 DESIGN_DIR="$ROOT/design"
 
 if [[ $# -lt 1 ]]; then
-  echo "Uso: $0 <nome_do_top_module>" >&2
+  echo -e "${RED}Usage: $0 <top_module_name>${NC}" >&2
   exit 1
 fi
 
 DUT="$1"
 
-# 1. Preparação do script temporário do Yosys
+# 1. Preparing the temporary script for Yosys
 TMP_SCRIPT=$(mktemp)
-
-echo "# Lendo todos os arquivos de design" > "$TMP_SCRIPT"
+echo "# Reading all design files" > "$TMP_SCRIPT"
 find "$DESIGN_DIR/single_cycle" -type f \( -name "*.v" -o -name "*.sv" \) | while read -r file; do
   echo "read_verilog -sv \"$file\"" >> "$TMP_SCRIPT"
 done
@@ -31,22 +35,26 @@ opt_clean -purge
 write_json ${DUT}.json
 EOF
 
-# 2. Executa a síntese
-echo "--- Iniciando síntese do módulo: $DUT ---"
+# 2. Execute synthesis
+echo "###############################################################"
+echo -e "${BLUE}         --- Starting synthesis for module: $DUT ---${NC}"
+echo "###############################################################"
 yosys -s "$TMP_SCRIPT"
 rm "$TMP_SCRIPT"
 
-# 3. Gera o SVG e aplica as correções automaticamente
+# 3. Generate SVG and apply styling
 if [ -f "${DUT}.json" ]; then
-    echo "--- Gerando diagrama SVG para: $DUT ---"
+    echo "###############################################################"
+    echo -e "${BLUE}          --- Generating SVG diagram for: $DUT ---${NC}"
+    echo "###############################################################"
     
-    # Executa o netlistsvg
     netlistsvg "${DUT}.json" -o "${DUT}.svg"
     
     sed -i '1a <style>svg { background-color: white; }</style>' "${DUT}.svg"
     
-    echo "Sucesso! Diagrama gerado: ${DUT}.svg"
+    echo -e "${BLUE}          --- Success! Diagram generated: ${DUT}.svg ---${NC}"
+    echo "###############################################################"
 else
-    echo "Erro: O arquivo ${DUT}.json não foi gerado. Verifique os logs do Yosys."
+    echo -e "${RED}Error: The file ${DUT}.json was not generated. Please check the Yosys logs.${NC}"
     exit 1
 fi
