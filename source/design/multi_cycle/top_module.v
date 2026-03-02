@@ -37,7 +37,6 @@ module cpu_top(
         is_blt ? (signed_less) :
                   1'b0;
 
-    assign PCEn = (PCWrite || take_branch) && !halt;
     assign pc_next = (PCSrc)? alu_reg : alu_out; // Placeholder for PC next logic
     assign halted = halt;
 
@@ -56,7 +55,7 @@ module cpu_top(
 //==============================================================================
     wire IorD;  // instruction or data fetch from memory selection
     wire [DATA_W-1:0] mem_out;       // memory output
-    wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc; 
+    wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc;
 // memory address selection: 1 for data, 0 for instruction
 
     wire [ADDR_W-1:0] mem_addr_word = mem_addr[ADDR_W+1:2]; // word-aligned address
@@ -84,13 +83,13 @@ module cpu_top(
     end
 
 //------------------------------------------------------------------------------
-// Non-Architectural Instruction Register logic
+// Non-Architectural Memory Data Register logic
     reg [DATA_W-1:0] mem_reg;   // data read from memory
 
     always @(posedge clk) begin
         if (rst)
             mem_reg <= {DATA_W{1'b0}};
-        else if (IorD)
+        else
             mem_reg <= mem_out;
     end
 
@@ -130,17 +129,27 @@ module cpu_top(
     wire       memtoReg;            //   [1] memtoReg
     wire       jump;                //   [0] jump
 
-    cu_fsm cu_fsm_inst (
-        .opcode     (opcode),
-        .funct      (funct),
-        .regWrite   (regWrite),
-        .regDst     (regDst),
-        .aluSrc     (aluSrc),
-        .aluControl (aluControl),
-        .branch     (branch),
-        .memWrite   (memWrite),
-        .memToReg   (memtoReg),
-        .jump       (jump)
+    fsm_cu fsm_cu_inst (
+        .clk            (clk),
+        .rst            (rst),
+        .opcode         (opcode),
+        .funct          (funct),
+        .aluOut_is_zero (is_zero),
+        .PCEn           (PCEn),
+        .memToReg       (memtoReg),
+        .regDst         (regDst),
+        .IorD           (IorD),
+        .PCSrc          (PCSrc),
+        .aluSrcA        (aluSrcA),
+        .aluSrcB        (aluSrcB),
+        .IRWrite        (IRWrite),
+        .memWrite       (memWrite),
+        .PCWrite        (PCWrite),
+        .branch         (branch),
+        .regWrite       (regWrite),
+        .aluControl     (aluControl),
+        .jump           (jump),
+        .halt           (halt)
     );
 
 //==============================================================================
@@ -174,10 +183,10 @@ module cpu_top(
     reg [DATA_W-1:0] rf_regB;     // "B" register
 
     always @(posedge clk) begin
-        if (rst)
+        if (rst) begin
             rf_regA <= {DATA_W{1'b0}};
             rf_regB <= {DATA_W{1'b0}};
-        else begin
+        end else begin
             rf_regA <= rf_data_out1;
             rf_regB <= rf_data_out2;
         end
