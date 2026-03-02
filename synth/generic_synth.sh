@@ -1,4 +1,4 @@
-lea#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,8 +11,8 @@ if [[ $# -lt 1 ]]; then
 fi
 
 DUT="$1"
-RTL_TOP="$(find "$DESIGN_DIR" -type f \( -name "${DUT}.v" -o -name "${DUT}.sv" \) -print -quit)"
 
+# 1. Preparação do script temporário do Yosys
 TMP_SCRIPT=$(mktemp)
 
 echo "# Lendo todos os arquivos de design" > "$TMP_SCRIPT"
@@ -24,14 +24,29 @@ cat <<EOF >> "$TMP_SCRIPT"
 hierarchy -top $DUT -check
 proc
 flatten
+opt
 techmap
+abc -g AND,OR,XOR,MUX
 opt_clean -purge
 write_json ${DUT}.json
-write_verilog ${DUT}_synth.v
-check
-stat
 EOF
 
+# 2. Executa a síntese
 echo "--- Iniciando síntese do módulo: $DUT ---"
 yosys -s "$TMP_SCRIPT"
 rm "$TMP_SCRIPT"
+
+# 3. Gera o SVG e aplica as correções automaticamente
+if [ -f "${DUT}.json" ]; then
+    echo "--- Gerando diagrama SVG para: $DUT ---"
+    
+    # Executa o netlistsvg
+    netlistsvg "${DUT}.json" -o "${DUT}.svg"
+    
+    sed -i '1a <style>svg { background-color: white; }</style>' "${DUT}.svg"
+    
+    echo "Sucesso! Diagrama gerado: ${DUT}.svg"
+else
+    echo "Erro: O arquivo ${DUT}.json não foi gerado. Verifique os logs do Yosys."
+    exit 1
+fi
