@@ -1,19 +1,37 @@
-#!/bin/bash
+lea#!/usr/bin/env bash
+set -eo pipefail
 
-# Receives a top module as an argument
-TOP_MODULE=$1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(realpath "$SCRIPT_DIR/../source")"
+DESIGN_DIR="$ROOT/design"
 
-# Checks if argument was passed
-if [ -z "$TOP_MODULE" ]; then
-    exit 1
+if [[ $# -lt 1 ]]; then
+  echo "Uso: $0 <nome_do_top_module>" >&2
+  exit 1
 fi
 
-# Criates temporary script replacing TOP_MODULE
+DUT="$1"
+RTL_TOP="$(find "$DESIGN_DIR" -type f \( -name "${DUT}.v" -o -name "${DUT}.sv" \) -print -quit)"
+
 TMP_SCRIPT=$(mktemp)
-sed "s/TOP_MODULE/$TOP_MODULE/g" synth_yosys.ys > $TMP_SCRIPT
 
-# Executes Yosys
-yosys -s $TMP_SCRIPT
+echo "# Lendo todos os arquivos de design" > "$TMP_SCRIPT"
+find "$DESIGN_DIR/single_cycle" -type f \( -name "*.v" -o -name "*.sv" \) | while read -r file; do
+  echo "read_verilog -sv \"$file\"" >> "$TMP_SCRIPT"
+done
 
-# Removes the temporary script
-rm $TMP_SCRIPT
+cat <<EOF >> "$TMP_SCRIPT"
+hierarchy -top $DUT -check
+proc
+flatten
+techmap
+opt_clean -purge
+write_json ${DUT}.json
+write_verilog ${DUT}_synth.v
+check
+stat
+EOF
+
+echo "--- Iniciando síntese do módulo: $DUT ---"
+yosys -s "$TMP_SCRIPT"
+rm "$TMP_SCRIPT"
