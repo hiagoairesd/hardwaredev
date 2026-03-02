@@ -19,25 +19,30 @@ module cpu_top(
     wire halt;
 
 // Branch condition signals
-    wire signed_less; // Set by ALU for signed comparisons
-    wire is_bne   = (opcode == 6'b000101);
-    wire is_blt   = (opcode == 6'b000110);
-    wire is_beq   = (opcode == 6'b000100);
+//    wire signed_less; // Set by ALU for signed comparisons
+//    wire is_bne   = (opcode == 6'b000101);
+//    wire is_blt   = (opcode == 6'b000110);
+//    wire is_beq   = (opcode == 6'b000100);
 
 // Program counter is byte-indexed (DATA_W bits)
     reg  [ADDR_W-1:0] pc;
-    wire [ADDR_W-1:0] pc_next;
+    wire [ADDR_W-1:0] pc_next;      // Next PC value after selection logic
+    wire [1:0]        PCSrc;        // PC source selection for next PC value
+    wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
     wire PCWrite;
-    wire PCSrc;
     wire PCEn;
 
-    assign take_branch =
-        is_beq ? (is_zero)     :
-        is_bne ? (~is_zero)    :
-        is_blt ? (signed_less) :
-                  1'b0;
+    //assign take_branch =
+    //    is_beq ? (is_zero)     :
+    //    is_bne ? (~is_zero)    :
+    //    is_blt ? (signed_less) :
+    //              1'b0;
 
-    assign pc_next = (PCSrc)? alu_reg : alu_out; // Placeholder for PC next logic
+    assign PCJump = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
+    assign pc_next = 
+        (PCSrc == 2'b00) ? alu_out :   
+        (PCSrc == 2'b01) ? alu_reg : 
+        (PCSrc == 2'b10) ? PCJump  : alu_out;
     assign halted = halt;
 
 // PC update policy:
@@ -104,6 +109,7 @@ module cpu_top(
     wire [4:0]  shamt  = instr[10:6];
     wire [5:0]  funct  = instr[5:0];
     wire [15:0] imm    = instr[15:0];
+    wire [25:0] addr   = instr[25:0];
 
 // Immediate extension policy:
 //   - ANDI/ORI/LUI use zero-extend
@@ -132,23 +138,21 @@ module cpu_top(
     fsm_cu fsm_cu_inst (
         .clk            (clk),
         .rst            (rst),
-        .opcode         (opcode),
-        .funct          (funct),
+        .instr          (instr),
         .aluOut_is_zero (is_zero),
         .PCEn           (PCEn),
         .memToReg       (memtoReg),
         .regDst         (regDst),
         .IorD           (IorD),
-        .PCSrc          (PCSrc),
         .aluSrcA        (aluSrcA),
         .aluSrcB        (aluSrcB),
+        .PCSrc          (PCSrc),
         .IRWrite        (IRWrite),
         .memWrite       (memWrite),
         .PCWrite        (PCWrite),
         .branch         (branch),
         .regWrite       (regWrite),
         .aluControl     (aluControl),
-        .jump           (jump),
         .halt           (halt)
     );
 
