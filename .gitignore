@@ -6,3 +6,6 @@ xcelium.d*
 *.vcd
 
 *_synth.v
+
+*.json
+*.svg
