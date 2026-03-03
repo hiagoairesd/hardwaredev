@@ -32,6 +32,7 @@ opt
 techmap
 abc -g AND,OR,XOR,MUX
 opt_clean -purge
+write_verilog -noattr ${DUT}_generic_synth.v
 write_json ${DUT}.json
 EOF
 
