@@ -85,6 +85,10 @@ SEARCH_PATHS=(
     "/usr/local/pdk/sky130"
     "$HOME/tools/sky130"
     "$HOME/sky130"
+    "$HOME/volare/sky130"
+    "$HOME/.volare/sky130"
+    "/opt/PDK/sky130"
+    "$HOME/PDK/sky130"
 )
 
 for base_path in "${SEARCH_PATHS[@]}"; do
@@ -104,9 +108,25 @@ done
 
 if [[ $FOUND_SKY130 -eq 0 ]]; then
     echo -e "${YELLOW}⚠${NC} Sky130 PDK not automatically detected"
-    echo "  Technology-specific synthesis will be disabled"
-    echo "  To enable later, run: $0 --force"
-    SKY130_PATH=""
+    echo
+    echo "Please provide the path to your Sky130 library file:"
+    echo "Example: /home/username/pdk/volare/sky130/.../sky130_fd_sc_hd__tt_100C_1v80.lib"
+    echo
+    read -p "Enter Sky130 library path (or press Enter to skip): " USER_SKY130_PATH
+    
+    if [[ -n "$USER_SKY130_PATH" ]]; then
+        if [[ -f "$USER_SKY130_PATH" ]]; then
+            SKY130_PATH="$USER_SKY130_PATH"
+            FOUND_SKY130=1
+            echo -e "${GREEN}✓${NC} Sky130 library path set!"
+        else
+            echo -e "${RED}✗${NC} File not found at: $USER_SKY130_PATH"
+            echo "  Technology-specific synthesis will be disabled"
+        fi
+    else
+        echo "  Skipping Sky130 configuration"
+        echo "  Technology-specific synthesis will be disabled"
+    fi
 fi
 echo
 
