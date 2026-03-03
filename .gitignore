@@ -9,3 +9,8 @@ xcelium.d*
 
 *.json
 *.svg
+*.ys
+
+# Configuration
+.env
+.env.local

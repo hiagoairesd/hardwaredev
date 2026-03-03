@@ -4,11 +4,12 @@ set -eo pipefail
 # ANSI color codes
 BLUE='\033[1;34m'
 RED='\033[1;31m'
+GREEN='\033[1;32m'
 NC='\033[0m' # No Color (resets the color)
 
+# Load configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(realpath "$SCRIPT_DIR/../source")"
-DESIGN_DIR="$ROOT/design"
+source "$SCRIPT_DIR/config.sh"
 
 if [[ $# -lt 1 ]]; then
   echo -e "${RED}Usage: $0 <top_module_name>${NC}" >&2
@@ -40,22 +41,24 @@ EOF
 echo "###############################################################"
 echo -e "${BLUE}         --- Starting synthesis for module: $DUT ---${NC}"
 echo "###############################################################"
-yosys -s "$TMP_SCRIPT"
+"$YOSYS_BIN" -s "$TMP_SCRIPT"
 rm "$TMP_SCRIPT"
 
 # 3. Generate SVG and apply styling
-if [ -f "${DUT}.json" ]; then
+if [[ $NETLISTSVG_AVAILABLE -eq 1 && -f "${DUT}.json" ]]; then
     echo "###############################################################"
     echo -e "${BLUE}          --- Generating SVG diagram for: $DUT ---${NC}"
-
     echo "###############################################################"
     
-    netlistsvg "${DUT}.json" -o "${DUT}.svg"
+    "$NETLISTSVG_BIN" "${DUT}.json" -o "${DUT}.svg"
     
     sed -i '1a <style>svg { background-color: white; }</style>' "${DUT}.svg"
     
-    echo -e "${BLUE}          --- Success! Diagram generated: ${DUT}.svg ---${NC}"
+    echo -e "${GREEN}          --- Success! Diagram generated: ${DUT}.svg ---${NC}"
     echo "###############################################################"
+elif [[ -f "${DUT}.json" ]]; then
+    echo -e "${GREEN}Synthesis successful. JSON generated: ${DUT}.json${NC}"
+    echo -e "${BLUE}Note: netlistsvg not available. Skipping SVG diagram generation.${NC}"
 else
     echo -e "${RED}Error: The file ${DUT}.json was not generated. Please check the Yosys logs.${NC}"
     exit 1
