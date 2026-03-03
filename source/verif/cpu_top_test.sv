@@ -44,6 +44,7 @@
 
 `define ANSI_RED  "\033[31m"
 `define ANSI_GRN  "\033[32m"
+`define ANSI_BLU  "\033[34m"
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
@@ -541,6 +542,122 @@ module cpu_top_test();
         end
     endtask
     //------------------------------------------------------------------------------
+    // check_fibonacci()
+    // Test goal:
+    //   - Validates a longer program with loops and multiple instructions (test_id=14).
+    // PASS criteria:
+    //   - Expected Fibonacci sequence values in registers and memory.
+    //   - Final success flag set to 1, and fib(20)=4181 stored in MEM[31].
+        task automatic check_fibonacci;
+            begin
+                $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+                $write({`ANSI_BOLD, " RUNNING FIBONACCI TESTS [14] ", `ANSI_RST});
+                $display({`ANSI_BOLD, "---------------", `ANSI_RST});
+                check_reg(0, DUT.rb_inst.regs[0],  32'h0000);
+                check_reg(1, DUT.rb_inst.regs[1],  32'h0A18);
+                check_reg(2, DUT.rb_inst.regs[2],  32'h1055);
+                check_reg(3, DUT.rb_inst.regs[3],  32'h1055);
+                check_reg(4, DUT.rb_inst.regs[4],  32'h0014);
+                check_reg(5, DUT.rb_inst.regs[5],  32'h0014);
+                check_reg(6, DUT.rb_inst.regs[6],  32'h0014);
+                check_reg(7, DUT.rb_inst.regs[7],  32'h0001);
+                check_mem(0,  DUT.data_mem_inst.mem[0],  32'h0000);
+                check_mem(1,  DUT.data_mem_inst.mem[1],  32'h0001);
+                check_mem(2,  DUT.data_mem_inst.mem[2],  32'h0001);
+                check_mem(3,  DUT.data_mem_inst.mem[3],  32'h0002);
+                check_mem(4,  DUT.data_mem_inst.mem[4],  32'h0003);
+                check_mem(5,  DUT.data_mem_inst.mem[5],  32'h0005);
+                check_mem(6,  DUT.data_mem_inst.mem[6],  32'h0008);
+                check_mem(7,  DUT.data_mem_inst.mem[7],  32'h000D);
+                check_mem(8,  DUT.data_mem_inst.mem[8],  32'h0015);
+                check_mem(9,  DUT.data_mem_inst.mem[9],  32'h0022);
+                check_mem(10, DUT.data_mem_inst.mem[10], 32'h0037);
+                check_mem(11, DUT.data_mem_inst.mem[11], 32'h0059);
+                check_mem(12, DUT.data_mem_inst.mem[12], 32'h0090);
+                check_mem(13, DUT.data_mem_inst.mem[13], 32'h00E9);
+                check_mem(14, DUT.data_mem_inst.mem[14], 32'h0179);
+                check_mem(15, DUT.data_mem_inst.mem[15], 32'h0262);
+                check_mem(16, DUT.data_mem_inst.mem[16], 32'h03DB);
+                check_mem(17, DUT.data_mem_inst.mem[17], 32'h063D);
+                check_mem(18, DUT.data_mem_inst.mem[18], 32'h0A18);
+                check_mem(19, DUT.data_mem_inst.mem[19], 32'h1055);
+                check_mem(30, DUT.data_mem_inst.mem[30], 32'h0001);
+                $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
+                check_mem(31, DUT.data_mem_inst.mem[31], 32'h1055);
+                $display({`ANSI_BLU, "   Stores final Fibonacci value (fib(20) = 4181)", `ANSI_RST});
+            end
+    endtask
+    //------------------------------------------------------------------------------
+    // check_fibonacci_overflow()
+    // Test goal:
+    //   - Validates behavior when Fibonacci sequence exceeds 32-bit limit (test_id=15).
+    // PASS criteria:
+    //   - Expected overflowed value in R1 and MEM[0] (fib(47) = 2971215073).
+        task automatic check_fibonacci_overflow;
+            begin
+                check_reg(0, DUT.rb_inst.regs[0],  32'h00000000);
+                check_reg(1, DUT.rb_inst.regs[1],  32'h43A53F82);
+                check_reg(2, DUT.rb_inst.regs[2],  32'h6D73E55F);
+                check_reg(3, DUT.rb_inst.regs[3],  32'hB11924E1);
+                check_reg(4, DUT.rb_inst.regs[4],  32'h0000002F);
+                check_reg(5, DUT.rb_inst.regs[5],  32'h00000031);
+                check_reg(6, DUT.rb_inst.regs[6],  32'h0000002F);
+                check_reg(7, DUT.rb_inst.regs[7],  32'h00000001);
+                check_reg(8, DUT.rb_inst.regs[8],  32'h00000001);
+                check_reg(9, DUT.rb_inst.regs[9],  32'h00000001);
+                check_mem(0,  DUT.data_mem_inst.mem[0],  32'h00000000);
+                check_mem(1,  DUT.data_mem_inst.mem[1],  32'h00000001);
+                check_mem(2,  DUT.data_mem_inst.mem[2],  32'h00000001);
+                check_mem(3,  DUT.data_mem_inst.mem[3],  32'h00000002);
+                check_mem(4,  DUT.data_mem_inst.mem[4],  32'h00000003);
+                check_mem(5,  DUT.data_mem_inst.mem[5],  32'h00000005);
+                check_mem(6,  DUT.data_mem_inst.mem[6],  32'h00000008);
+                check_mem(7,  DUT.data_mem_inst.mem[7],  32'h0000000D);
+                check_mem(8,  DUT.data_mem_inst.mem[8],  32'h00000015);
+                check_mem(9,  DUT.data_mem_inst.mem[9],  32'h00000022);
+                check_mem(10, DUT.data_mem_inst.mem[10], 32'h00000037);
+                check_mem(11, DUT.data_mem_inst.mem[11], 32'h00000059);
+                check_mem(12, DUT.data_mem_inst.mem[12], 32'h00000090);
+                check_mem(13, DUT.data_mem_inst.mem[13], 32'h000000E9);
+                check_mem(14, DUT.data_mem_inst.mem[14], 32'h00000179);
+                check_mem(15, DUT.data_mem_inst.mem[15], 32'h00000262);
+                check_mem(16, DUT.data_mem_inst.mem[16], 32'h000003DB);
+                check_mem(17, DUT.data_mem_inst.mem[17], 32'h0000063D);
+                check_mem(18, DUT.data_mem_inst.mem[18], 32'h00000A18);
+                check_mem(19, DUT.data_mem_inst.mem[19], 32'h00001055);
+                check_mem(20, DUT.data_mem_inst.mem[20], 32'h00001A6D);
+                check_mem(21, DUT.data_mem_inst.mem[21], 32'h00002AC2);
+                check_mem(22, DUT.data_mem_inst.mem[22], 32'h0000452F);
+                check_mem(23, DUT.data_mem_inst.mem[23], 32'h00006FF1);
+                check_mem(24, DUT.data_mem_inst.mem[24], 32'h0000B520);
+                check_mem(25, DUT.data_mem_inst.mem[25], 32'h00012511);
+                check_mem(26, DUT.data_mem_inst.mem[26], 32'h0001DA31);
+                check_mem(27, DUT.data_mem_inst.mem[27], 32'h0002FF42);
+                check_mem(28, DUT.data_mem_inst.mem[28], 32'h0004D973);
+                check_mem(29, DUT.data_mem_inst.mem[29], 32'h0007D8B5);
+                check_mem(33, DUT.data_mem_inst.mem[33], 32'h0035C7E2);
+                check_mem(34, DUT.data_mem_inst.mem[34], 32'h005704E7);
+                check_mem(35, DUT.data_mem_inst.mem[35], 32'h008CCCC9);
+                check_mem(36, DUT.data_mem_inst.mem[36], 32'h00E3D1B0);
+                check_mem(37, DUT.data_mem_inst.mem[37], 32'h01709E79);
+                check_mem(38, DUT.data_mem_inst.mem[38], 32'h02547029);
+                check_mem(39, DUT.data_mem_inst.mem[39], 32'h03C50EA2);
+                check_mem(40, DUT.data_mem_inst.mem[40], 32'h06197ECB);
+                check_mem(41, DUT.data_mem_inst.mem[41], 32'h09DE8D6D);
+                check_mem(42, DUT.data_mem_inst.mem[42], 32'h0FF80C38);
+                check_mem(43, DUT.data_mem_inst.mem[43], 32'h19D699A5);
+                check_mem(44, DUT.data_mem_inst.mem[44], 32'h29CEA5DD);
+                check_mem(45, DUT.data_mem_inst.mem[45], 32'h43A53F82);
+                check_mem(46, DUT.data_mem_inst.mem[46], 32'h6D73E55F);
+                check_mem(30, DUT.data_mem_inst.mem[30], 32'h00000001);
+                $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
+                check_mem(31, DUT.data_mem_inst.mem[31], 32'h6D73E55F);
+                $display({`ANSI_BLU, "   Last valid Fibonacci value (fib(46) = 1836311903)", `ANSI_RST});
+                check_mem(32, DUT.data_mem_inst.mem[32], 32'hB11924E1);
+                $display({`ANSI_BLU, "   Overflow detected | value (fib(47) wrapped = 2971215073)", `ANSI_RST});
+            end
+        endtask
+    //------------------------------------------------------------------------------
     // check_integration()
     // Test goal:
     //   - Validates multiple instructions working together (default test).
@@ -638,6 +755,8 @@ module cpu_top_test();
                 11: check_srl();
                 12: check_bne();
                 13: check_blt();
+                14: check_fibonacci();
+                15: check_fibonacci_overflow();
                 default: check_integration();
             endcase
 
