@@ -69,64 +69,31 @@ fi
 echo
 
 # ============================================================================
-# Auto-detect Sky130 PDK
+# Manual Sky130 PDK Configuration
 # ============================================================================
 
-echo "2. Searching for Sky130 PDK..."
+echo "2. Configuring Sky130 PDK..."
 
 FOUND_SKY130=0
 SKY130_PATH=""
 
-# Search in common locations
-SEARCH_PATHS=(
-    "$HOME/pdk/volare/sky130"
-    "$HOME/.local/pdk/sky130"
-    "/opt/sky130"
-    "/usr/local/pdk/sky130"
-    "$HOME/tools/sky130"
-    "$HOME/sky130"
-    "$HOME/volare/sky130"
-    "$HOME/.volare/sky130"
-    "/opt/PDK/sky130"
-    "$HOME/PDK/sky130"
-)
+echo "Please provide the path to your Sky130 library file:"
+echo "Example: /home/username/pdk/volare/sky130/.../sky130_fd_sc_hd__tt_100C_1v80.lib"
+echo
+read -p "Enter Sky130 library path (or press Enter to skip): " SKY130_INPUT
 
-for base_path in "${SEARCH_PATHS[@]}"; do
-    if [[ -d "$base_path" ]]; then
-        # Look for the library file
-        found_lib=$(find "$base_path" -name "*sky130_fd_sc_hd*tt_100C_1v80.lib" -type f 2>/dev/null | head -n1)
-        
-        if [[ -n "$found_lib" ]]; then
-            SKY130_PATH="$found_lib"
-            FOUND_SKY130=1
-            echo -e "${GREEN}✓${NC} Found Sky130 library at:"
-            echo "  $SKY130_PATH"
-            break
-        fi
-    fi
-done
-
-if [[ $FOUND_SKY130 -eq 0 ]]; then
-    echo -e "${YELLOW}⚠${NC} Sky130 PDK not automatically detected"
-    echo
-    echo "Please provide the path to your Sky130 library file:"
-    echo "Example: /home/username/pdk/volare/sky130/.../sky130_fd_sc_hd__tt_100C_1v80.lib"
-    echo
-    read -p "Enter Sky130 library path (or press Enter to skip): " USER_SKY130_PATH
-    
-    if [[ -n "$USER_SKY130_PATH" ]]; then
-        if [[ -f "$USER_SKY130_PATH" ]]; then
-            SKY130_PATH="$USER_SKY130_PATH"
-            FOUND_SKY130=1
-            echo -e "${GREEN}✓${NC} Sky130 library path set!"
-        else
-            echo -e "${RED}✗${NC} File not found at: $USER_SKY130_PATH"
-            echo "  Technology-specific synthesis will be disabled"
-        fi
+if [[ -n "$SKY130_INPUT" ]]; then
+    if [[ -f "$SKY130_INPUT" ]]; then
+        SKY130_PATH="$SKY130_INPUT"
+        FOUND_SKY130=1
+        echo -e "${GREEN}✓${NC} Sky130 library path set successfully!"
     else
-        echo "  Skipping Sky130 configuration"
-        echo "  Technology-specific synthesis will be disabled"
+        echo -e "${RED}✗${NC} File not found at: $SKY130_INPUT"
+        echo "  Continuing without Sky130 (generic synthesis only)"
     fi
+else
+    echo -e "${YELLOW}ℹ${NC} Sky130 PDK skipped"
+    echo "  Continuing with generic synthesis only"
 fi
 echo
 
