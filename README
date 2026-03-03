@@ -411,13 +411,50 @@ You can also set `YOSYS_BIN` and `NETLISTSVG_BIN` when needed.
 
 ## ✅ Testing
 
+### CPU Test Suite
+
+The CPU testbench (`cpu_top_test.sv`) includes 15 comprehensive tests covering instruction types, memory operations, and edge cases:
+
+|Test ID|            Name       |                 Description                   | Key Validation              |
+|-------|-----------------------|-----------------------------------------------|-----------------------------|
+| 1     | `regs`                | Basic register write operations               | R1=1, R2=2, R3=3            |
+| 2     | `basic_swlw`          | Store/Load word integration                   | SW/LW addressing            |
+| 3     | `border_swlw`         | Edge case signed immediates                   | Sign-extension, max memory  |
+| 4     | `rtype`               | R-type ALU operations (ADD, SUB, AND, OR, XOR, SLT) | All ALU results       |
+| 5     | `jump`                | Jump instruction control flow                 | J taken, PC update          |
+| 6     | `beq`                 | Branch-if-equal and loop behavior             | BEQ taken/not-taken         |
+| 7     | `andi`                | AND-immediate (zero-extension)                | RR operations, MEM writes   |
+| 8     | `ori`                 | OR-immediate (zero-extension)                 | RR operations, MEM writes   |
+| 9     | `lui`                 | Load upper immediate                               | Upper 16-bit placement |
+| 10    | `sll`                 | Shift left logical                                 | Variable shift amounts |
+| 11    | `srl`                 | Shift right logical                                | Variable shift amounts |
+| 12    | `bne`                 | Branch-if-not-equal                                | BNE taken/not-taken    |
+| 13    | `blt`                 | Branch-if-less-than (signed)                       | Signed comparison      |
+| 14    | `fibonacci`           | Fibonacci sequence computation (fib(0) to fib(20)) | Loop control, arithmetic, MEM[0-19], fib(20)=4181 |
+| 15    | `fibonacci_overflow` | Fibonacci with 32-bit overflow detection | Overflow at fib(47), wrapped value in MEM[32] |
+
 ### Quick CPU regression (Icarus)
 
 ```bash
-for i in {1..14}; do
+for i in {1..15}; do
   echo "Running test $i"
   (cd simu && ./simu_icarus.sh cpu_top +test=$i) || echo "Test $i failed"
 done
+```
+
+### Run individual CPU tests
+
+```bash
+cd simu
+
+# Lightweight (PC/instr/opcode trace)
+./simu_icarus.sh cpu_top +test=14 +trace
+
+# Detailed (register writes, memory writes, branches, jumps)
+./simu_icarus.sh cpu_top +test=15 +trace_w
+
+# With waveform capture
+./simu_icarus.sh cpu_top +test=4
 ```
 
 ### Focused unit runs
@@ -436,10 +473,10 @@ cd simu
 
 ### Setup
 
-| Command               | Purpose                                      |
-|-----------------------|----------------------------------------------|
+| Command               |                      Purpose                        |
+|-----------------------|-----------------------------------------------------|
 | `./setup.sh`          | Create/update local `.env` and validate environment |
-| `synth/check_env.sh`  | Run environment health check                 |
+| `synth/check_env.sh`  | Run environment health check                        |
 
 ### Simulation
 
@@ -455,14 +492,14 @@ cd simu
 |---------------------------------------------|----------------------------------------|
 | `cd synth && ./generic_synth.sh <module>`   | Generic synthesis                      |
 | `cd synth && ./specific_synth.sh <module>`  | Sky130 technology mapping              |
-| `genus -f synth/synth_genus.tcl`            | Cadence Genus synthesis (licensed flow) |
+| `genus -f synth/synth_genus.tcl`            | Cadence Genus synthesis (licensed flow)|
 
 ### Debug/inspection
 
 | Command                                                        | Purpose              |
 |----------------------------------------------------------------|----------------------|
 | `gtkwave simu/cpu_top.vcd`                                     | Open waveform        |
-| `find ~ -name "*sky130_fd_sc_hd*tt_100C_1v80.lib" 2>/dev/null` | Locate Sky130 liberty |
+| `find ~ -name "*sky130_fd_sc_hd*tt_100C_1v80.lib" 2>/dev/null` | Locate Sky130 liberty|
 
 ---
 
@@ -512,14 +549,16 @@ cd simu
 
 ### Verification (`source/verif/`)
 
-| File                         | Description            |
-|------------------------------|------------------------|
-| `cpu_top_test.sv`            | CPU integration tests  |
-| `alu_test.sv`                | ALU tests              |
-| `control_unit_test.sv`       | Control unit tests     |
-| `registers_bank_test.sv`     | Register bank tests    |
-| `fifo_test.sv`               | FIFO tests             |
-| `converter_gray_bin_test.sv` | Converter tests        |
+| File                         |                     Description                                      |
+|------------------------------|----------------------------------------------------------------------|
+| `cpu_top_test.sv`            | CPU integration tests (test 1-15)                                    |
+| `alu_test.sv`                | ALU tests                                                            |
+| `control_unit_test.sv`       | Control unit tests                                                   |
+| `registers_bank_test.sv`     | Register bank tests                                                  |
+| `fifo_test.sv`               | FIFO tests                                                           |
+| `converter_gray_bin_test.sv` | Converter tests                                                      |
+| `assembly/`                  | CPU test programs in hex format                                      |
+| `assembly/*.hex`             | Test programs: regs, basic_swlw, fibonacci, fibonacci_overflow, etc. |
 
 ### Synthesis scripts (`synth/`)
 
@@ -605,5 +644,5 @@ Part of CVA Silicon Technologies course project.
 
 ---
 
-**Last Updated:** March 2, 2026  
+**Last Updated:** March 3, 2026  
 **Status:** Active Development
