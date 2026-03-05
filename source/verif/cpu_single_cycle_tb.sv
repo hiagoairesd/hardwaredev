@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 //==============================================================================
-// multi_cycle_tb.sv
+// cpu_single_cycle_tb.sv
 //
-// Testbench for: multi_cycle_top (MIPS-like multi-cycle CPU)
+// Testbench for: cpu_single_cycle (MIPS-like single-cycle CPU)
 //
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
@@ -48,7 +48,7 @@
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
-module multi_cycle_tb();
+module single_cycle_tb();
 
     //==============================================================================
     // 1) Parameters / Localparams / TB defaults
@@ -84,7 +84,7 @@ module multi_cycle_tb();
     // 3) DUT instantiation
     //==============================================================================
 
-    cpu_top #(
+    cpu_single_cycle #(
         .ADDR_W (ADDR_W),
         .DATA_W (DATA_W)
     ) DUT (
@@ -109,8 +109,8 @@ module multi_cycle_tb();
 
     // Always dump waveforms for debug. If you prefer, guard with +dump.
     initial begin
-        $dumpfile("multi_cycle.vcd");
-        $dumpvars(0, multi_cycle_tb);
+        $dumpfile("cpu_single_cycle.vcd");
+        $dumpvars(0, single_cycle_tb);
     end
 
     //==============================================================================

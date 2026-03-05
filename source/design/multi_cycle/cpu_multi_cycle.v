@@ -20,9 +20,6 @@ module cpu_top(
 
 // Branch condition signals
 //    wire signed_less; // Set by ALU for signed comparisons
-//    wire is_bne   = (opcode == 6'b000101);
-//    wire is_blt   = (opcode == 6'b000110);
-//    wire is_beq   = (opcode == 6'b000100);
 
 // Program counter is byte-indexed (DATA_W bits)
     reg  [ADDR_W-1:0] pc;
@@ -31,12 +28,6 @@ module cpu_top(
     wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
     wire PCWrite;
     wire PCEn;
-
-    //assign take_branch =
-    //    is_beq ? (is_zero)     :
-    //    is_bne ? (~is_zero)    :
-    //    is_blt ? (signed_less) :
-    //              1'b0;
 
     assign PCJump = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
     assign pc_next = 
@@ -219,14 +210,14 @@ module cpu_top(
         (aluSrcB == 2'b11) ? (imm_ext << 2);
 
     wire [DATA_W-1:0] alu_out;
-    wire             is_zero;
+    wire              is_zero;
 
     alu alu_inst (
-        .aluControl  (aluControl),
-        .in_a        (alu_a),
-        .in_b        (alu_b),
-        .out         (alu_out),
-        .is_zero     (is_zero)
+        .aluControl (aluControl),
+        .in_a       (alu_a),
+        .in_b       (alu_b),
+        .out        (alu_out),
+        .is_zero    (is_zero)
     );
 
 //------------------------------------------------------------------------------

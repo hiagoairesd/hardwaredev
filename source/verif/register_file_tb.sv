@@ -1,4 +1,4 @@
-module registers_bank_tb();
+module register_file_tb();
 
     localparam DATA_W = 32;
     localparam NREGS = 32;
@@ -25,7 +25,7 @@ module registers_bank_tb();
     end
 
     // module instantiation
-    registers_bank
+    register_file
     #(
         .DATA_W(DATA_W),
         .NREGS(NREGS)

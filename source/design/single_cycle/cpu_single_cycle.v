@@ -1,7 +1,7 @@
 //==============================================================================
-// cpu_top.sv
+// cpu_single_cycle.sv
 //
-// Module: cpu_top
+// Module: cpu_single_cycle
 // Type  : MIPS-like single-cycle CPU top (PC-indexed instruction memory)
 //
 // PURPOSE
@@ -33,7 +33,7 @@
 //       write_reg, rb_wdata, alu_out, is_zero, dm_data
 //==============================================================================
 
-module cpu_top #(
+module cpu_single_cycle #(
     parameter int ADDR_W = 8,
     parameter int DATA_W = 32
 )(
@@ -154,7 +154,7 @@ module cpu_top #(
     wire        jump             = word[0];
 
     //==============================================================================
-    // 5) Register bank (read + writeback selection)
+    // 5) Register file (read + writeback selection)
     //==============================================================================
 
     wire [4:0] write_reg = (regDst) ? rd : rt;
@@ -163,7 +163,7 @@ module cpu_top #(
     wire [DATA_W-1:0] rb_data_out2;
     wire [DATA_W-1:0] rb_wdata;
 
-    registers_bank rb_inst(
+    register_file rb_inst(
         .clk        (clk),
         .rst        (rst),
         .wr         (regWrite),
@@ -193,15 +193,17 @@ module cpu_top #(
 
     wire [DATA_W-1:0] alu_out;
     wire              is_zero;
+    wire              signed_less;
 
     alu #(
         .DATA_W(DATA_W)
     ) alu_inst (
-        .opcode  (aluControl),
-        .in_a    (alu_a),
-        .in_b    (alu_b),
-        .out     (alu_out),
-        .is_zero (is_zero)
+        .opcode      (aluControl),
+        .in_a        (alu_a),
+        .in_b        (alu_b),
+        .out         (alu_out),
+        .is_zero     (is_zero),
+        .signed_less (signed_less)
     );
 
     //==============================================================================
@@ -235,10 +237,6 @@ module cpu_top #(
     //==============================================================================
 
     wire [ADDR_W-1:0] pc_plus1  = pc + 1;
-
-    // Signed comparison for BLT (control logic, not ALU)
-    wire signed_less;
-    assign signed_less = ($signed(rb_data_out1) < $signed(rb_data_out2));
 
     // Branch handling:
     //   - is_bne is true for BNE opcode (000101)

@@ -5,6 +5,7 @@ module fsm_cu #(
     input wire        rst,
     input wire [31:0] instr,                // full instruction word (for opcode and funct fields)
     input wire        aluOut_is_zero,       // ALU zero flag
+    input wire        signed_less,          // ALU signed less flag
 
     output wire PCEn,                       // PC enable signal (for PC update)
 
@@ -24,24 +25,24 @@ module fsm_cu #(
 //=================================================================================
     localparam  FETCH          = 4'd0, DECODE        = 4'd1,  MEM_ADR   = 4'd2,
                 MEM_READ       = 4'd3, MEM_WRITEBACK = 4'd4,  MEM_WRITE = 4'd5,
-                EXECUTE        = 4'd6, ALU_WRITEBACK = 4'd7,  BEQ       = 4'd8,
+                EXECUTE        = 4'd6, ALU_WRITEBACK = 4'd7,  BRANCH    = 4'd8,
                 ADDI_WRITEBACK = 4'd9, JUMP          = 4'd10, HALT      = 4'd11;
 
 //==================================================================================
 // 2) Opcode and funct field encoding
 //==================================================================================
     localparam  OP_RTYPE = 6'b000000, OP_LW    = 6'b100011, OP_SW    = 6'b101011,
-                OP_BEQ   = 6'b000100, OP_BNE   = 6'b000101, OP_ADDI  = 6'b001000,
-                OP_ORI   = 6'b001101, OP_JMP   = 6'b000010, OP_ANDI  = 6'b001100,
-                OP_LUI   = 6'b001111, OP_ADDI  = 6'b001000, OP_JUMP  = 6'b000010, 
-                OP_HALT  = 6'b111111;
+                OP_BEQ   = 6'b000100, OP_BNE   = 6'b000101, OP_BLT   = 6'b000110,
+                OP_ADDI  = 6'b001000, OP_ORI   = 6'b001101, OP_JMP   = 6'b000010,
+                OP_ANDI  = 6'b001100, OP_LUI   = 6'b001111, OP_ADDI  = 6'b001000,
+                OP_JUMP  = 6'b000010, OP_HALT  = 6'b111111;
 
 //==================================================================================
 // 3) Internal signals for instruction decoding and control logic
 //==================================================================================
-    wire [5:0] opcode;
-    wire [5:0] funct;
-
+    wire [5:0] opcode = instr[31:26];
+    wire [5:0] funct  = instr[5:0];
+    wire [1:0] aluOp;                   // ALU operation code for ALU control logic
 //===================================================================================
 // 4) State transition logic (1st block): combinational logic to determine next state
 //===================================================================================
@@ -51,12 +52,12 @@ module fsm_cu #(
             FETCH : nstate = DECODE;
             DECODE: begin
                 case (opcode)
-                    OP_SW, OP_LW: nstate = MEM_ADR;
-                    OP_RTYPE    : nstate = EXECUTE;
-                    OP_BEQ      : nstate = BEQ;
-                    OP_JUMP     : nstate = JUMP;
-                    OP_HALT     : nstate = HALT;
-                    default     : nstate = FETCH;
+                    OP_SW, OP_LW  : nstate = MEM_ADR;
+                    OP_RTYPE      : nstate = EXECUTE;
+                    OP_BEQ, OP_BNE: nstate = BRANCH;
+                    OP_JUMP       : nstate = JUMP;
+                    OP_HALT       : nstate = HALT;
+                    default       : nstate = FETCH;
                 endcase
             end
             MEM_ADR: begin
@@ -72,7 +73,7 @@ module fsm_cu #(
             MEM_WRITE     : nstate = FETCH;
             EXECUTE       : nstate = ALU_WRITEBACK;
             ALU_WRITEBACK : nstate = FETCH;
-            BEQ           : nstate = FETCH;
+            BRANCH        : nstate = FETCH;
             ADDI_WRITEBACK: nstate = FETCH;
             JUMP          : nstate = FETCH;
             HALT          : nstate = HALT;
@@ -186,7 +187,7 @@ module fsm_cu #(
             end
         //------------------------------------------------------------------------------
         // (S8) Branch state: evaluate branch condition and update PC if needed
-            BEQ: begin
+            BRANCH: begin
                 aluSrcA    = 1'b1;      // rs data as ALU input A
                 aluSrcB    = 2'b00;     // rt data as ALU input B
                 aluOp      = 2'b01;     // sub (for branch comparison)
@@ -255,4 +256,13 @@ endmodule
 //==================================================================================
 // 8) PC update logic: combinational logic to determine when to update PC based on control signals and ALU zero flag
 //==================================================================================
-    assign PCEn = PCWrite | (branch & zero);
+    
+    wire is_beq = (opcode == OP_BEQ);
+    wire is_bne = (opcode == OP_BNE);
+    wire is_blt = (opcode == OP_BLT);
+
+    wire take_branch = (is_beq && aluOut_is_zero) |
+                       (is_bne && ~aluOut_is_zero)|
+                       (is_blt && signed_less);
+
+    assign PCEn = PCWrite | (branch & take_branch);

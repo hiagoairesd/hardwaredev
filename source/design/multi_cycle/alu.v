@@ -5,7 +5,8 @@ module alu #(
     input  wire [DATA_W-1:0] in_a,
     input  wire [DATA_W-1:0] in_b,
     output reg  [DATA_W-1:0] out,
-    output wire              is_zero
+    output wire              is_zero,
+    output wire              signed_less
 );
     always @* begin
         case (aluControl)
