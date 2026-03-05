@@ -1,4 +1,4 @@
-module registers_bank_test();
+module registers_bank_tb();
 
     localparam DATA_W = 32;
     localparam NREGS = 32;
@@ -63,7 +63,7 @@ module registers_bank_test();
 
     initial begin
         $dumpfile("registers_bank.vcd");
-        $dumpvars(0, registers_bank_test);
+        $dumpvars(0, registers_bank_tb);
     end
     
 endmodule

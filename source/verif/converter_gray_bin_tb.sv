@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module tb_converter_gray_bin;
+module converter_gray_bin_tb;
 
     parameter WIDTH = 4;
 

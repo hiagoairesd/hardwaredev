@@ -1,4 +1,4 @@
-module fifo_test;
+module fifo_tb;
 
     // local constants
     localparam AWIDTH = 8;
@@ -58,7 +58,7 @@ module fifo_test;
 
     initial begin
         $dumpfile("fifo.vcd");
-        $dumpvars(0, fifo_test);
+        $dumpvars(0, fifo_tb);
     end
 always #10 clk =~clk;
 endmodule

@@ -1,4 +1,4 @@
-module control_unit_test();
+module control_unit_tb();
 
     localparam CTRL_WORD_W = 10;
     localparam INSTR_W = 32;
@@ -100,6 +100,6 @@ module control_unit_test();
 
     initial begin
         $dumpfile("control_unit.vcd");
-        $dumpvars(0, control_unit_test);
+        $dumpvars(0, control_unit_tb);
     end
 endmodule

@@ -48,7 +48,7 @@
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
-module cpu_top_test();
+module cpu_top_tb();
 
     //==============================================================================
     // 1) Parameters / Localparams / TB defaults
@@ -110,7 +110,7 @@ module cpu_top_test();
     // Always dump waveforms for debug. If you prefer, guard with +dump.
     initial begin
         $dumpfile("cpu_top.vcd");
-        $dumpvars(0, cpu_top_test);
+        $dumpvars(0, cpu_top_tb);
     end
 
     //==============================================================================

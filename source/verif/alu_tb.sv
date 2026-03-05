@@ -1,4 +1,4 @@
-module alu_test();
+module alu_tb();
 
     localparam DATA_W = 32;
 
@@ -61,6 +61,6 @@ module alu_test();
 
     initial begin
         $dumpfile("alu.vcd");
-        $dumpvars(0, alu_test);
+        $dumpvars(0, alu_tb);
     end
 endmodule
