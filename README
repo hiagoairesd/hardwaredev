@@ -84,17 +84,16 @@ hardwaredev/
 │   │       ├── struct_ripple_carry_adder.v
 │   │       └── using_function_counter.v
 │   └── verif/
-│       ├── *_test.sv
+│       ├── *_tb.sv
 │       └── assembly/
-├── synth/
-│   ├── config.sh                    # Loads .env / env vars and validates paths
-│   ├── check_env.sh                 # Environment health check
-│   ├── generic_synth.sh             # Generic synthesis script
-│   ├── specific_synth.sh            # Sky130 mapping synthesis script
-│   ├── synth_genus.tcl              # Cadence Genus script
-│   ├── synth.ys                     # Temporary/generated Yosys script (runtime)
-│   └── *.v / *.json / *.svg         # Generated synthesis outputs
-└── SYNTHESIS_SETUP.md               # Legacy detailed synthesis guide (content integrated here)
+└── synth/
+    ├── config.sh                    # Loads .env / env vars and validates paths
+    ├── check_env.sh                 # Environment health check
+    ├── generic_synth.sh             # Generic synthesis script
+    ├── specific_synth.sh            # Sky130 mapping synthesis script
+    ├── synth_genus.tcl              # Cadence Genus script
+    ├── synth.ys                     # Temporary/generated Yosys script (runtime)
+    └── *.v / *.json / *.svg         # Generated synthesis outputs
 ```
 
 ---
@@ -132,12 +131,12 @@ Collection of standalone RTL exercises and utility circuits:
 ### 4) Verification (`source/verif/`)
 
 Unit and integration testbenches:
-- `alu_test.sv`
-- `control_unit_test.sv`
-- `registers_bank_test.sv`
-- `fifo_test.sv`
-- `converter_gray_bin_test.sv`
-- `cpu_top_test.sv`
+- `alu_tb.sv`
+- `control_unit_tb.sv`
+- `registers_bank_tb.sv`
+- `fifo_tb.sv`
+- `converter_gray_bin_tb.sv`
+- `cpu_top_tb.sv`
 
 Assembly programs are in `source/verif/assembly/`.
 
@@ -183,15 +182,15 @@ chmod +x synth/generic_synth.sh synth/specific_synth.sh synth/check_env.sh
 
 ```bash
 cd simu
-./simu_icarus.sh cpu_top
+./simu_icarus.sh cpu_single_cycle
 ```
 
 Run with test selector / runtime args:
 
 ```bash
-./simu_icarus.sh cpu_top +test=1
-./simu_icarus.sh cpu_top +test=4 +trace
-./simu_icarus.sh cpu_top +test=4 +trace_w
+./simu_icarus.sh cpu_single_cycle +test=1
+./simu_icarus.sh cpu_single_cycle +test=4 +trace
+./simu_icarus.sh cpu_single_cycle +test=4 +trace_w
 ```
 
 For module-level tests (example):
@@ -206,7 +205,7 @@ For module-level tests (example):
 
 ```bash
 cd simu
-./simu_xcelium.sh cpu_top
+./simu_xcelium.sh cpu_single_cycle
 ```
 
 > Note: if your local paths differ, adjust path variables inside `simu/simu_xcelium.sh`.
@@ -214,7 +213,7 @@ cd simu
 ### Waveforms
 
 ```bash
-gtkwave simu/cpu_top.vcd &
+gtkwave simu/cpu_single_cycle.vcd &
 ```
 
 ---
@@ -323,7 +322,7 @@ Other examples:
 ```bash
 ./generic_synth.sh control_unit
 ./generic_synth.sh registers_bank
-./generic_synth.sh cpu_top
+./generic_synth.sh cpu_single_cycle
 ```
 
 Expected outputs:
@@ -342,8 +341,8 @@ For the same module synthesized in Step 5:
 CPU example:
 
 ```bash
-./generic_synth.sh cpu_top
-./specific_synth.sh cpu_top
+./generic_synth.sh cpu_multi_cycle
+./specific_synth.sh cpu_multi_cycle
 ```
 
 Expected output:
@@ -413,7 +412,7 @@ You can also set `YOSYS_BIN` and `NETLISTSVG_BIN` when needed.
 
 ### CPU Test Suite
 
-The CPU testbench (`cpu_top_test.sv`) includes 15 comprehensive tests covering instruction types, memory operations, and edge cases:
+The CPU testbench (`cpu_single_cycle_tb.sv`) includes 15 comprehensive tests covering instruction types, memory operations, and edge cases:
 
 |Test ID|            Name       |                 Description                   | Key Validation              |
 |-------|-----------------------|-----------------------------------------------|-----------------------------|
@@ -438,7 +437,7 @@ The CPU testbench (`cpu_top_test.sv`) includes 15 comprehensive tests covering i
 ```bash
 for i in {1..15}; do
   echo "Running test $i"
-  (cd simu && ./simu_icarus.sh cpu_top +test=$i) || echo "Test $i failed"
+  (cd simu && ./simu_icarus.sh cpu_single_cycle +test=$i) || echo "Test $i failed"
 done
 ```
 
@@ -448,13 +447,13 @@ done
 cd simu
 
 # Lightweight (PC/instr/opcode trace)
-./simu_icarus.sh cpu_top +test=14 +trace
+./simu_icarus.sh cpu_single_cycle +test=14 +trace
 
 # Detailed (register writes, memory writes, branches, jumps)
-./simu_icarus.sh cpu_top +test=15 +trace_w
+./simu_icarus.sh cpu_single_cycle +test=15 +trace_w
 
 # With waveform capture
-./simu_icarus.sh cpu_top +test=4
+./simu_icarus.sh cpu_single_cycle +test=4
 ```
 
 ### Focused unit runs
@@ -480,11 +479,11 @@ cd simu
 
 ### Simulation
 
-| Command                                       | Purpose                |
-|-----------------------------------------------|------------------------|
-| `cd simu && ./simu_icarus.sh cpu_top`         | Run CPU simulation     |
-| `cd simu && ./simu_icarus.sh cpu_top +test=N` | Run specific CPU test  |
-| `cd simu && ./simu_xcelium.sh cpu_top`        | Run Xcelium flow       |
+|          Command                                       |             Purpose                 |
+|--------------------------------------------------------|-------------------------------------|
+| `cd simu && ./simu_icarus.sh cpu_single_cycle`         | Run Single-cycle CPU simulation     |
+| `cd simu && ./simu_icarus.sh cpu_single_cycle +test=N` | Run specific Single-cycle CPU test  |
+| `cd simu && ./simu_xcelium.sh cpu_single_cycle`        | Run Xcelium flow                    |
 
 ### Synthesis
 
@@ -498,7 +497,7 @@ cd simu
 
 | Command                                                        | Purpose              |
 |----------------------------------------------------------------|----------------------|
-| `gtkwave simu/cpu_top.vcd`                                     | Open waveform        |
+| `gtkwave simu/cpu_single_cycle.vcd`                            | Open waveform        |
 | `find ~ -name "*sky130_fd_sc_hd*tt_100C_1v80.lib" 2>/dev/null` | Locate Sky130 liberty|
 
 ---
@@ -528,35 +527,36 @@ cd simu
 
 ### Single-cycle design (`source/design/single_cycle/`)
 
-| File               | Description           |
-|--------------------|-----------------------|
-| `cpu_top.v`        | CPU top integration   |
-| `alu.v`            | Arithmetic/logic unit |
-| `control_unit.v`   | Control decode logic  |
-| `registers_bank.v` | Register file         |
-| `instr_mem.v`      | Instruction memory    |
-| `data_mem.v`       | Data memory           |
+| File                    |  Description          |
+|-------------------------|-----------------------|
+| `cpu_single_cycle_top.v`| CPU top integration   |
+| `alu.v`                 | Arithmetic/logic unit |
+| `control_unit.v`        | Control decode logic  |
+| `registers_bank.v`      | Register file         |
+| `instr_mem.v`           | Instruction memory    |
+| `data_mem.v`            | Data memory           |
 
 ### Multi-cycle design (`source/design/multi_cycle/`)
 
-| File              | Description                 |
-|-------------------|-----------------------------|
-| `top_module.v`    | Multi-cycle top integration |
-| `fsm_cu.v`        | FSM control unit            |
-| `alu.v`           | ALU implementation          |
-| `register_file.v` | Register file               |
-| `memory.v`        | Memory block                |
+| File                   | Description                 |
+|------------------------|-----------------------------|
+| `cpu_multi_cycle_top.v`| Multi-cycle top integration |
+| `fsm_cu.v`             | FSM control unit            |
+| `alu.v`                | ALU implementation          |
+| `register_file.v`      | Register file               |
+| `memory.v`             | Memory block                |
 
 ### Verification (`source/verif/`)
 
 | File                         |                     Description                                      |
 |------------------------------|----------------------------------------------------------------------|
-| `cpu_top_test.sv`            | CPU integration tests (test 1-15)                                    |
-| `alu_test.sv`                | ALU tests                                                            |
-| `control_unit_test.sv`       | Control unit tests                                                   |
-| `registers_bank_test.sv`     | Register bank tests                                                  |
-| `fifo_test.sv`               | FIFO tests                                                           |
-| `converter_gray_bin_test.sv` | Converter tests                                                      |
+| `cpu_single_cycle_tb.sv`     | Single-cycle CPU testbench (test 0-15)                               |
+| `alu_tb.sv`                  | ALU tests                                                            |
+| `control_unit_tb.sv`         | Control unit tests                                                   |
+| `registers_bank_tb.sv`       | Register bank tests                                                  |
+| `fifo_tb.sv`                 | FIFO tests                                                           |
+| `converter_gray_bin_tb.sv`   | Converter tests                                                      |
+| `cpu_multi_cycle_tb.sv`      | Multi-cycle CPU testbench (test 0-15)                                |
 | `assembly/`                  | CPU test programs in hex format                                      |
 | `assembly/*.hex`             | Test programs: regs, basic_swlw, fibonacci, fibonacci_overflow, etc. |
 

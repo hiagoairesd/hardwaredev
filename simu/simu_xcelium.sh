@@ -13,7 +13,7 @@ fi
 dut="$1"
 shift
 
-tb="${VERIF}/${dut}_test.sv"
+tb="${VERIF}/${dut}_tb.sv"
 
 deps=(
   "$LASD/mod1/registers_bank.v"

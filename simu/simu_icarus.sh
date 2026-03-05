@@ -17,7 +17,7 @@ dut="$1"
 shift
 
 out="${dut}.out"
-tb="${VERIF}/${dut}_test.sv"
+tb="${VERIF}/${dut}_tb.sv"
 
 echo "###############################################################"
 echo "DUT : $dut"
