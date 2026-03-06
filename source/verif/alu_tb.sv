@@ -7,16 +7,18 @@ module alu_tb();
     reg  [DATA_W-1:0] in_b_tb;
     wire [DATA_W-1:0] out_tb;
     wire             is_zero_tb;
+    wire             signed_less_tb;
 
     alu
     #(
         .DATA_W(DATA_W)
     ) DUT (
-        .opcode (opcode_tb),
-        .in_a    (in_a_tb),
-        .in_b    (in_b_tb),
-        .out     (out_tb),
-        .is_zero (is_zero_tb)
+        .aluControl (opcode_tb),
+        .in_a       (in_a_tb),
+        .in_b       (in_b_tb),
+        .out        (out_tb),
+        .is_zero    (is_zero_tb),
+        .signed_less(signed_less_tb)
     );
 
     task check;

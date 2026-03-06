@@ -198,7 +198,7 @@ module cpu_single_cycle #(
     alu #(
         .DATA_W(DATA_W)
     ) alu_inst (
-        .opcode      (aluControl),
+        .aluControl  (aluControl),
         .in_a        (alu_a),
         .in_b        (alu_b),
         .out         (alu_out),

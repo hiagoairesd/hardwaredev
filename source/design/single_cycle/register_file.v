@@ -1,4 +1,4 @@
-module registers_bank#(
+module register_file#(
     parameter DATA_W = 32,
     parameter NREGS = 32,
     localparam int REG_W = $clog2(NREGS)
