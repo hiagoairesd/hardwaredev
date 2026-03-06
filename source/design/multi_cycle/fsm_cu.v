@@ -16,7 +16,7 @@ module fsm_cu #(
     output reg [1:0]  aluSrcB,  PCSrc,
 
 // ENABLE SIGNALS
-    output reg        IRWrite, memWrite, PCWrite, branch, regWrite,
+    output reg        IRWrite, memWrite, PCWrite, regWrite,
 
 // CONTROL SIGNALS
     output reg [2:0]  aluControl,
@@ -48,6 +48,7 @@ module fsm_cu #(
     wire [5:0] opcode = instr[DATA_W-1:26];
     wire [5:0] funct  = instr[5:0];
     wire [1:0] aluOp;                   // ALU operation code for ALU control logic
+    reg        branch;
 //===================================================================================
 // 4) State transition logic (1st block): combinational logic to determine next state
 //===================================================================================

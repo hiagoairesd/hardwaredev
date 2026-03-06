@@ -15,16 +15,10 @@ module cpu_top#(
 //==============================================================================
 // 2) Architectural state (PC) + halt interface
 //==============================================================================
-// Halt signal from control unit; exported as output 'halted'
-    wire halt;
-
 // Program counter is byte-indexed (DATA_W bits)
     reg  [ADDR_W-1:0] pc;
     wire [ADDR_W-1:0] pc_next;      // Next PC value after selection logic
-    wire [1:0]        PCSrc;        // PC source selection for next PC value
     wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
-    wire PCWrite;
-    wire PCEn;
 
     assign PCJump = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
     assign pc_next = 
@@ -46,16 +40,15 @@ module cpu_top#(
 //==============================================================================
 // 5) Memory
 //==============================================================================
-    wire IorD;  // instruction or data fetch from memory selection
-    wire [DATA_W-1:0] mem_out;       // memory output
-    wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc;
-// memory address selection: 1 for data, 0 for instruction
-
+    wire [DATA_W-1:0] mem_out;
+    wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc;      // memory address selection: 1 for data, 0 for instruction
     wire [ADDR_W-1:0] mem_addr_word = mem_addr[ADDR_W+1:2]; // word-aligned address
-
     wire [DATA_W-1:0] mem_data_in = rf_regB;
 
-    memory memory_inst (
+    memory memory_inst #(
+        .DATA_W(DATA_W),
+        .ADDR_W(ADDR_W)
+    )(
         .clk        (clk),
         .we         (memWrite),
         .addr       (mem_addr_word),
@@ -64,10 +57,7 @@ module cpu_top#(
     );
 
 //------------------------------------------------------------------------------
-// Non-Architectural Instruction Register logic
-    reg [DATA_W-1:0] instr;
-    wire IRWrite;
-
+// Non-Architectural Instruction Register logic    
     always @(posedge clk) begin
         if (rst)
             instr <= {DATA_W{1'b0}};
@@ -89,16 +79,15 @@ module cpu_top#(
 //==============================================================================
 // 4) Instruction fields + immediate extension
 //==============================================================================
+    wire [DATA_W-1:0] instr;
+
 // Decode fields (MIPS-like format)
-    wire [5:0]  opcode = instr[DATA_W-1:26];
     wire [4:0]  rs     = instr[25:21];
     wire [4:0]  rt     = instr[20:16];
     wire [4:0]  rd     = instr[15:11];
     wire [4:0]  shamt  = instr[10:6];
-    wire [5:0]  funct  = instr[5:0];
     wire [15:0] imm    = instr[15:0];
     wire [25:0] addr   = instr[25:0];
-    wire imm_is_zext;                           // Immediate zero-extension control signal from control unit
 
     wire [DATA_W-1:0] imm_ext =
         imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};
@@ -111,12 +100,24 @@ module cpu_top#(
     wire       regDst;              //   [8] regDst 
     wire       aluSrc;              //   [7] aluSrc
     wire [2:0] aluControl;          //   [6:4] aluControl
-    wire       branch;              //   [3] branch
     wire       memWrite;            //   [2] memWrite
     wire       memtoReg;            //   [1] memtoReg
     wire       jump;                //   [0] jump
 
-    fsm_cu fsm_cu_inst (
+    wire       PCEn;                // Program counter enable signal
+    wire       is_shift;            // Shift instruction flag (for ALU operand A selection)
+    wire       imm_is_zext;         // Immediate zero-extension control (for logical immediates)
+    wire       IorD;                // instruction or data fetch from memory selection
+    wire       aluSrcA;             // ALU operand A source selection
+    wire [1:0] aluSrcB;             // ALU operand B source selection
+    wire [1:0] PCSrc;               // PC source selection for next PC value
+    wire       IRWrite;             // Instruction register write enable
+    wire       PCWrite;             // PC write enable (for jumps and branches)
+    wire       halt;
+
+    fsm_cu fsm_cu_inst #(
+        .DATA_W(DATA_W)
+    )(
         .clk            (clk),
         .rst            (rst),
         .instr          (instr),
@@ -134,7 +135,6 @@ module cpu_top#(
         .IRWrite        (IRWrite),
         .memWrite       (memWrite),
         .PCWrite        (PCWrite),
-        .branch         (branch),
         .regWrite       (regWrite),
         .aluControl     (aluControl),
         .halt           (halt)
@@ -149,7 +149,9 @@ module cpu_top#(
     wire [DATA_W-1:0] rf_data_out2;
     wire [DATA_W-1:0] rf_wdata;
 
-    register_file rf_inst(
+    register_file rf_inst#(
+        .DATA_W(DATA_W)
+    )(
         .clk        (clk),
         .rst        (rst),
         .we3        (regWrite),
@@ -183,10 +185,6 @@ module cpu_top#(
 //==============================================================================
 // 6) ALU operand selection + ALU execution
 //==============================================================================
-    wire aluSrcA;
-    wire [1:0] aluSrcB;
-    wire is_shift;
-
 // ALU operand A:
 //   - aluSrcA=1 selects PC
 //   - aluSrcA=0 selects rs data
@@ -210,7 +208,9 @@ module cpu_top#(
     wire              is_zero;
     wire              signed_less;
 
-    alu alu_inst (
+    alu alu_inst #(
+        .DATA_W(DATA_W)
+    )(
         .aluControl (aluControl),
         .in_a       (alu_a),
         .in_b       (alu_b),
