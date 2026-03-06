@@ -1,13 +1,15 @@
 module fsm_cu #(
+    parameter DATA_W      = 32,
     parameter CTRL_WORD_W = 10
 ) (
-    input wire        clk,
-    input wire        rst,
-    input wire [31:0] instr,                // full instruction word (for opcode and funct fields)
-    input wire        aluOut_is_zero,       // ALU zero flag
-    input wire        signed_less,          // ALU signed less flag
+    input wire              clk,
+    input wire              rst,
+    input wire [DATA_W-1:0] instr,           // full instruction word (for opcode and funct fields)
+    input wire              aluOut_is_zero,  // ALU zero flag
+    input wire              signed_less,     // ALU signed less flag
 
-    output wire PCEn,                       // PC enable signal (for PC update)
+    output wire PCEn,                  // PC enable signal for program counter update
+    output wire is_shift, imm_is_zext, // signals for shift instructions and immediate extension policy
 
 // SELECT SIGNALS
     output reg        memToReg, regDst, IorD, aluSrcA,
@@ -23,10 +25,11 @@ module fsm_cu #(
 //=================================================================================
 // 1) State encoding
 //=================================================================================
-    localparam  FETCH          = 4'd0, DECODE        = 4'd1,  MEM_ADR   = 4'd2,
-                MEM_READ       = 4'd3, MEM_WRITEBACK = 4'd4,  MEM_WRITE = 4'd5,
-                EXECUTE        = 4'd6, ALU_WRITEBACK = 4'd7,  BRANCH    = 4'd8,
-                ADDI_WRITEBACK = 4'd9, JUMP          = 4'd10, HALT      = 4'd11;
+    localparam  FETCH          = 4'd0, DECODE        = 4'd1,  MEM_ADR     = 4'd2,
+                MEM_READ       = 4'd3, MEM_WRITEBACK = 4'd4,  MEM_WRITE   = 4'd5,
+                EXECUTE        = 4'd6, ALU_WRITEBACK = 4'd7,  BRANCH      = 4'd8,
+                IMM_WRITEBACK = 4'd9, JUMP          = 4'd10, EXECUTE_IMM = 4'd11,
+                HALT           = 4'd12;
 
 //==================================================================================
 // 2) Opcode and funct field encoding
@@ -37,10 +40,12 @@ module fsm_cu #(
                 OP_ANDI  = 6'b001100, OP_LUI   = 6'b001111, OP_ADDI  = 6'b001000,
                 OP_JUMP  = 6'b000010, OP_HALT  = 6'b111111;
 
+    localparam  FNCT_SLL = 6'b000000, FNCT_SRL = 6'b000010;
+
 //==================================================================================
 // 3) Internal signals for instruction decoding and control logic
 //==================================================================================
-    wire [5:0] opcode = instr[31:26];
+    wire [5:0] opcode = instr[DATA_W-1:26];
     wire [5:0] funct  = instr[5:0];
     wire [1:0] aluOp;                   // ALU operation code for ALU control logic
 //===================================================================================
@@ -52,19 +57,22 @@ module fsm_cu #(
             FETCH : nstate = DECODE;
             DECODE: begin
                 case (opcode)
-                    OP_SW, OP_LW  : nstate = MEM_ADR;
-                    OP_RTYPE      : nstate = EXECUTE;
-                    OP_BEQ, OP_BNE: nstate = BRANCH;
-                    OP_JUMP       : nstate = JUMP;
-                    OP_HALT       : nstate = HALT;
-                    default       : nstate = FETCH;
+                    OP_SW, OP_LW    : nstate = MEM_ADR;
+                    OP_RTYPE        : nstate = EXECUTE;
+                    OP_BEQ, OP_BNE,
+                    OP_BLT          : nstate = BRANCH;
+                    OP_ADDI, OP_ORI,
+                    OP_ANDI, OP_LUI : nstate = EXECUTE_IMM;
+                    OP_JUMP         : nstate = JUMP;
+                    OP_HALT         : nstate = HALT;
+                    default         : nstate = FETCH;
                 endcase
             end
             MEM_ADR: begin
                 case(opcode)
                     OP_LW  : nstate = MEM_READ;
                     OP_SW  : nstate = MEM_WRITE;
-                    OP_ADDI: nstate = ADDI_WRITEBACK;
+                    OP_ADDI: nstate = IMM_WRITEBACK;
                     default: nstate = FETCH;
                 endcase
             end
@@ -74,8 +82,9 @@ module fsm_cu #(
             EXECUTE       : nstate = ALU_WRITEBACK;
             ALU_WRITEBACK : nstate = FETCH;
             BRANCH        : nstate = FETCH;
-            ADDI_WRITEBACK: nstate = FETCH;
+            IMM_WRITEBACK: nstate = FETCH;
             JUMP          : nstate = FETCH;
+            EXECUTE_IMM   : nstate = IMM_WRITEBACK;
             HALT          : nstate = HALT;
             default: nstate = FETCH;
         endcase
@@ -199,9 +208,9 @@ module fsm_cu #(
                 regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
-        // (S9) ADDI writeback state: write addi result back to register
-            ADDI_WRITEBACK: begin
-                regDst      = 1'b0;      // select rt as destination register for addi
+        // (S9) Immediate writeback state: write immediate result back to register
+            IMM_WRITEBACK: begin
+                regDst      = 1'b0;      // select rt as destination register for immediate instructions
                 memtoReg    = 1'b0;      // select ALU result for register writeback
                 regWrite    = 1'b1;      // enable register writeback
                 IRWrite     = 1'b0;
@@ -220,7 +229,24 @@ module fsm_cu #(
                 regWrite   = 1'b0;
             end
         //------------------------------------------------------------------------------
-        // (S11) HALT state: set halt signal and disable all other operations
+        // (S11) Execute immediate state: perform ALU operation with immediate value
+            EXECUTE_IMM: begin
+                aluSrcB    = 2'b10;     // select sign-extended immediate for ALU input B
+                IRWrite    = 1'b0;
+                memWrite   = 1'b0;
+                PCWrite    = 1'b0;
+                branch     = 1'b0;
+                regWrite   = 1'b0;
+                case(opcode)
+                    OP_ADDI: aluControl = 3'b010; // add
+                    OP_ORI : aluControl = 3'b001; // or
+                    OP_ANDI: aluControl = 3'b000; // and
+                    OP_LUI : aluControl = 3'b011; // and (we will handle LUI special case in ALU control logic)
+                    default: aluControl = 3'b000; // default to AND for undefined immediate instructions
+                endcase
+            end
+        //------------------------------------------------------------------------------
+        // (S12) HALT state: set halt signal and disable all other operations
             HALT: begin
                 halt       = 1'b1;          // set halt signal in HALT state
                 IRWrite    = 1'b0;
@@ -266,3 +292,21 @@ endmodule
                        (is_blt && signed_less);
 
     assign PCEn = PCWrite | (branch & take_branch);
+
+
+//==================================================================================
+// 9) Special case handling for shift instructions: determine if current instruction is a shift and adjust control signals accordingly
+//================================================================================
+
+    wire is_shift = (opcode == OP_RTYPE) &
+                    (funct  == FNCT_SLL  | funct == FNCT_SRL);
+    // For shift instructions, we need to use the shamt field as ALU input instead of the register value. 
+    // This requires a special case in the control logic to select the correct ALU input.
+    // Immediate extension policy:
+
+    //   - ANDI/ORI/LUI use zero-extend
+    //   - others use sign-extend
+    wire imm_is_zext =
+        (opcode == OP_ANDI) |
+        (opcode == OP_ORI)  |
+        (opcode == OP_LUI);

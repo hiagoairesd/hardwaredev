@@ -1,4 +1,4 @@
-module cpu_top(
+module cpu_top#(
     parameter DATA_W = 32,
     parameter ADDR_W = 8
 )(
@@ -17,9 +17,6 @@ module cpu_top(
 //==============================================================================
 // Halt signal from control unit; exported as output 'halted'
     wire halt;
-
-// Branch condition signals
-//    wire signed_less; // Set by ALU for signed comparisons
 
 // Program counter is byte-indexed (DATA_W bits)
     reg  [ADDR_W-1:0] pc;
@@ -101,14 +98,7 @@ module cpu_top(
     wire [5:0]  funct  = instr[5:0];
     wire [15:0] imm    = instr[15:0];
     wire [25:0] addr   = instr[25:0];
-
-// Immediate extension policy:
-//   - ANDI/ORI/LUI use zero-extend
-//   - others use sign-extend
-    wire imm_is_zext =
-        (opcode == OP_ANDI) ||
-        (opcode == OP_ORI)  ||
-        (opcode == OP_LUI);
+    wire imm_is_zext;                           // Immediate zero-extension control signal from control unit
 
     wire [DATA_W-1:0] imm_ext =
         imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};
@@ -131,7 +121,10 @@ module cpu_top(
         .rst            (rst),
         .instr          (instr),
         .aluOut_is_zero (is_zero),
+        .signed_less    (signed_less),
         .PCEn           (PCEn),
+        .is_shift       (is_shift),
+        .imm_is_zext    (imm_is_zext),
         .memToReg       (memtoReg),
         .regDst         (regDst),
         .IorD           (IorD),
@@ -192,11 +185,15 @@ module cpu_top(
 //==============================================================================
     wire aluSrcA;
     wire [1:0] aluSrcB;
+    wire is_shift;
 
 // ALU operand A:
 //   - aluSrcA=1 selects PC
 //   - aluSrcA=0 selects rs data
-    wire [DATA_W-1:0] alu_a = (aluSrcA)? rf_regA : pc;
+    wire [DATA_W-1:0] alu_a = 
+        (aluSrcA == 0) ? pc                          :       
+        (is_shift)     ? {{(DATA_W-5){1'b0}}, shamt} : 
+                         rf_regA;
 
 // ALU operand B:
 //   - aluSrcB=0 selects rt data
@@ -206,18 +203,20 @@ module cpu_top(
     wire [DATA_W-1:0] alu_b =
         (aluSrcB == 2'b00) ? rf_regB                     :
         (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4}  :
-        (aluSrcB == 2'b10) ? imm_ext                     :
-        (aluSrcB == 2'b11) ? (imm_ext << 2);
+        (aluSrcB == 2'b10) ? imm_ext                     : 
+                             (imm_ext << 2); // (aluSrcB == 2'b11)
 
     wire [DATA_W-1:0] alu_out;
     wire              is_zero;
+    wire              signed_less;
 
     alu alu_inst (
         .aluControl (aluControl),
         .in_a       (alu_a),
         .in_b       (alu_b),
         .out        (alu_out),
-        .is_zero    (is_zero)
+        .is_zero    (is_zero),
+        .signed_less(signed_less)
     );
 
 //------------------------------------------------------------------------------
