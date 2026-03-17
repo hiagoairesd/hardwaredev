@@ -6,39 +6,21 @@ module cpu_top#(
     input wire rst,
     output wire halted
 );
-//==============================================================================
-// 1) Local parameters (ISA constants / widths)
-//==============================================================================
-
-
 
 //==============================================================================
-// 2) Architectural state (PC) + halt interface
+// 1) PC Logic
 //==============================================================================
-// Program counter is byte-indexed (DATA_W bits)
-    reg  [ADDR_W-1:0] pc;
+    reg  [ADDR_W-1:0] pc;           // Program counter is byte-indexed (DATA_W bits)
     wire [ADDR_W-1:0] pc_next;      // Next PC value after selection logic
     wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
 
-    assign PCJump = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
+    assign PCJump  = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
     assign pc_next = 
         (PCSrc == 2'b00) ? alu_out :   
         (PCSrc == 2'b01) ? alu_reg : 
         (PCSrc == 2'b10) ? PCJump  : alu_out;
-    assign halted = halt;
-
-// PC update policy:
-//   - reset forces PC=0
-//   - when halt is asserted, PC stops updating (freezes at current value)
-    always @(posedge clk) begin
-        if(rst)
-            pc <= {ADDR_W{1'b0}};
-        else if(PCEn)
-            pc <= pc_next;
-    end
-
 //==============================================================================
-// 5) Memory
+// 2) Memory
 //==============================================================================
     wire [DATA_W-1:0] mem_out;
     wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc;      // memory address selection: 1 for data, 0 for instruction
@@ -55,33 +37,9 @@ module cpu_top#(
         .data_in    (mem_data_in),
         .data_out   (mem_out)
     );
-
-//------------------------------------------------------------------------------
-// Non-Architectural Instruction Register logic    
-    always @(posedge clk) begin
-        if (rst)
-            instr <= {DATA_W{1'b0}};
-        else if (IRWrite)
-            instr <= mem_out;
-    end
-
-//------------------------------------------------------------------------------
-// Non-Architectural Memory Data Register logic
-    reg [DATA_W-1:0] mem_reg;   // data read from memory
-
-    always @(posedge clk) begin
-        if (rst)
-            mem_reg <= {DATA_W{1'b0}};
-        else
-            mem_reg <= mem_out;
-    end
-
 //==============================================================================
-// 4) Instruction fields + immediate extension
+// 3) Instruction fields + immediate extension
 //==============================================================================
-    wire [DATA_W-1:0] instr;
-
-// Decode fields (MIPS-like format)
     wire [4:0]  rs     = instr[25:21];
     wire [4:0]  rt     = instr[20:16];
     wire [4:0]  rd     = instr[15:11];
@@ -93,29 +51,15 @@ module cpu_top#(
         imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};
 
 //==============================================================================
-// 4) Control unit interface + control word breakdown
+// 4) Control unit
 //==============================================================================
-// Control word mapping (MSB..LSB):
-    wire       regWrite;            //   [9] regWrite
-    wire       regDst;              //   [8] regDst 
-    wire       aluSrc;              //   [7] aluSrc
-    wire [2:0] aluControl;          //   [6:4] aluControl
-    wire       memWrite;            //   [2] memWrite
-    wire       memtoReg;            //   [1] memtoReg
-    wire       jump;                //   [0] jump
+    wire       regWrite, regDst, aluSrc;
+    wire [2:0] aluControl;
+    wire       memWrite, memtoReg, jump, PCEn, is_shift, imm_is_zext, IorD, aluSrcA;
+    wire [1:0] aluSrcB, PCSrc;
+    wire       IRWrite, PCWrite, halt;
 
-    wire       PCEn;                // Program counter enable signal
-    wire       is_shift;            // Shift instruction flag (for ALU operand A selection)
-    wire       imm_is_zext;         // Immediate zero-extension control (for logical immediates)
-    wire       IorD;                // instruction or data fetch from memory selection
-    wire       aluSrcA;             // ALU operand A source selection
-    wire [1:0] aluSrcB;             // ALU operand B source selection
-    wire [1:0] PCSrc;               // PC source selection for next PC value
-    wire       IRWrite;             // Instruction register write enable
-    wire       PCWrite;             // PC write enable (for jumps and branches)
-    wire       halt;
-
-    fsm_cu fsm_cu_inst #(
+    control_unit control_unit_inst #(
         .DATA_W(DATA_W)
     )(
         .clk            (clk),
@@ -139,7 +83,6 @@ module cpu_top#(
         .aluControl     (aluControl),
         .halt           (halt)
     );
-
 //==============================================================================
 // 5) Register file (read + writeback selection)
 //==============================================================================
@@ -167,21 +110,6 @@ module cpu_top#(
 //   - memtoReg=0 selects alu_out
     assign rf_wdata = (memtoReg)? mem_reg : alu_out;
 
-//------------------------------------------------------------------------------
-// Non-Architectural Register File output register logic
-    reg [DATA_W-1:0] rf_regA;     // "A" register
-    reg [DATA_W-1:0] rf_regB;     // "B" register
-
-    always @(posedge clk) begin
-        if (rst) begin
-            rf_regA <= {DATA_W{1'b0}};
-            rf_regB <= {DATA_W{1'b0}};
-        end else begin
-            rf_regA <= rf_data_out1;
-            rf_regB <= rf_data_out2;
-        end
-    end
-
 //==============================================================================
 // 6) ALU operand selection + ALU execution
 //==============================================================================
@@ -199,9 +127,9 @@ module cpu_top#(
 //   - aluSrcB=2 selects imm_ext
 //   - aluSrcB=3 selects imm_ext << 2
     wire [DATA_W-1:0] alu_b =
-        (aluSrcB == 2'b00) ? rf_regB                     :
-        (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4}  :
-        (aluSrcB == 2'b10) ? imm_ext                     : 
+        (aluSrcB == 2'b00) ? rf_regB                    :
+        (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4} :
+        (aluSrcB == 2'b10) ? imm_ext                    : 
                              (imm_ext << 2); // (aluSrcB == 2'b11)
 
     wire [DATA_W-1:0] alu_out;
@@ -219,15 +147,36 @@ module cpu_top#(
         .signed_less(signed_less)
     );
 
-//------------------------------------------------------------------------------
-// Non-Architectural ALU output register logic
-    reg [DATA_W-1:0] alu_reg;
+//==============================================================================
+// 7) State registers for multi-cycle operation
+//==============================================================================
+    reg [DATA_W-1:0] alu_reg;     // ALU output register to hold intermediate results across cycles
+    reg [DATA_W-1:0] instr;       // Instruction register
+    reg [DATA_W-1:0] mem_reg;     // data read from memory
+    reg [DATA_W-1:0] rf_regA;     // register file output A (rs)
+    reg [DATA_W-1:0] rf_regB;     // register file output B (rt)
 
     always @(posedge clk) begin
         if (rst)
+            pc      <= {ADDR_W{1'b0}};
+            instr   <= {DATA_W{1'b0}};
             alu_reg <= {DATA_W{1'b0}};
+            mem_reg <= {DATA_W{1'b0}};
+            rf_regA <= {DATA_W{1'b0}};
+            rf_regB <= {DATA_W{1'b0}};
         else
+            if (PCEn)
+                pc    <= pc_next;
+            if (IRWrite)
+                instr <= mem_out;
             alu_reg <= alu_out;
+            mem_reg <= mem_out;
+            rf_regA <= rf_data_out1;
+            rf_regB <= rf_data_out2;
     end
+//==============================================================================
+// 8) Halt signal generation
+//==============================================================================
+    assign halted = halt;
 endmodule
     

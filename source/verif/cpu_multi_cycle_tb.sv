@@ -48,7 +48,7 @@
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
-module multi_cycle_tb();
+module cpu_multi_cycle_tb();
 
     //==============================================================================
     // 1) Parameters / Localparams / TB defaults
