@@ -1,7 +1,7 @@
 module register_file #(
     parameter ADDR_W = 5,
-    parameter DATA_W = 32
-    parameter NREGS = 32,
+    parameter DATA_W = 32,
+    parameter NREGS  = 32
 ) (
     input wire               clk,
     input wire               rst,
