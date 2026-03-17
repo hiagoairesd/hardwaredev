@@ -1,4 +1,4 @@
-module fsm_cu #(
+module control_unit #(
     parameter DATA_W      = 32,
     parameter CTRL_WORD_W = 10
 ) (
@@ -8,19 +8,26 @@ module fsm_cu #(
     input wire              aluOut_is_zero,  // ALU zero flag
     input wire              signed_less,     // ALU signed less flag
 
-    output wire PCEn,                  // PC enable signal for program counter update
-    output wire is_shift, imm_is_zext, // signals for shift instructions and immediate extension policy
+    output wire PCEn,                        // PC enable signal for program counter update
+    output wire is_shift, imm_is_zext,       // signals for shift instructions and immediate extension policy
 
 // SELECT SIGNALS
-    output reg        memToReg, regDst, IorD, aluSrcA,
-    output reg [1:0]  aluSrcB,  PCSrc,
+    output reg       memToReg,              // select signal for register writeback data (0: ALU result, 1: memory data)
+    output reg       regDst,                // select signal for destination register (0: rt, 1: rd)
+    output reg       IorD,                  // select signal for memory address source (0: PC, 1: ALU result)
+    output reg       aluSrcA,               // select signal for ALU input A (0: PC, 1: register data)
+    output reg [1:0] aluSrcB,               // select signal for ALU input B (00: register data | 01: 4 | 10: sign-extended immediate | 11: sign-extended immediate << 2)
+    output reg [1:0] PCSrc,                 // select signal for PC source (00: PC+4 | 01: branch target | 10: jump target)
 
 // ENABLE SIGNALS
-    output reg        IRWrite, memWrite, PCWrite, regWrite,
+    output reg       IRWrite,               // instruction register write enable
+    output reg       memWrite,              // memory write enable
+    output reg       PCWrite,               // PC write enable (for jumps and branches)
+    output reg       regWrite,              // register file write enable
 
 // CONTROL SIGNALS
-    output reg [2:0]  aluControl,
-    output reg        halt
+    output reg [2:0]  aluControl,           // ALU control signal (to select ALU operation)
+    output reg        halt                  // signal to indicate halt instruction has been executed
 );
 //=================================================================================
 // 1) State encoding
@@ -28,7 +35,7 @@ module fsm_cu #(
     localparam  FETCH          = 4'd0, DECODE        = 4'd1,  MEM_ADR     = 4'd2,
                 MEM_READ       = 4'd3, MEM_WRITEBACK = 4'd4,  MEM_WRITE   = 4'd5,
                 EXECUTE        = 4'd6, ALU_WRITEBACK = 4'd7,  BRANCH      = 4'd8,
-                IMM_WRITEBACK = 4'd9, JUMP          = 4'd10, EXECUTE_IMM = 4'd11,
+                IMM_WRITEBACK  = 4'd9, JUMP          = 4'd10, EXECUTE_IMM = 4'd11,
                 HALT           = 4'd12;
 
 //==================================================================================
@@ -110,9 +117,9 @@ module fsm_cu #(
                 IRWrite    = 1'b1;      // write to instruction register
                 PCWrite    = 1'b1;      // update PC
                 aluSrcA    = 1'b0;      // PC as ALU input A
-                aluSrcB    = 2'b01;     // 4 for PC + 4
+                aluSrcB    = 2'b01;     // 4 as ALU input B (for PC + 4)
                 aluOp      = 2'b00;     // add
-                PCSrc      = 2'b00;     // PC + 4
+                PCSrc      = 2'b00;     // PC = PC + 4
                 memWrite   = 1'b0;
                 branch     = 1'b0;
                 regWrite   = 1'b0;
@@ -288,8 +295,8 @@ endmodule
     wire is_bne = (opcode == OP_BNE);
     wire is_blt = (opcode == OP_BLT);
 
-    wire take_branch = (is_beq && aluOut_is_zero) |
-                       (is_bne && ~aluOut_is_zero)|
+    wire take_branch = (is_beq && aluOut_is_zero ) |
+                       (is_bne && ~aluOut_is_zero) |
                        (is_blt && signed_less);
 
     assign PCEn = PCWrite | (branch & take_branch);
@@ -309,5 +316,5 @@ endmodule
     //   - others use sign-extend
     wire imm_is_zext =
         (opcode == OP_ANDI) |
-        (opcode == OP_ORI)  |
-        (opcode == OP_LUI);
+        (opcode == OP_ORI ) |
+        (opcode == OP_LUI );
