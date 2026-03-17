@@ -1,0 +1,16 @@
+// --- SEÇÃO DE INSTRUÇÕES (Endereços 0 a 2) ---
+8C08000C    // [0] lw $t0, 12($0)  <- Busca o dado no endereço 12
+21080001    // [1] addi $t0, $t0, 1
+AC080010    // [2] sw $t0, 16($0)  <- Salva o resultado no endereço 16
+08000003    // [3] j 3 (loop infinito para parar o processador)
+
+// --- SEÇÃO DE DADOS (Endereços 4 em diante) ---
+// Note que as linhas 4 a 11 estão vazias (ou com zeros)
+00000000    // [4]
+00000000    // [5] ...
+00000000    // [11]
+0000002A    // [12] Dado inicial: 42 em hexadecimal (0x2A)
+00000000    // [13]
+00000000    // [14]
+00000000    // [15]
+00000000    // [16] Onde o SW vai escrever o 43 (0x2B)
