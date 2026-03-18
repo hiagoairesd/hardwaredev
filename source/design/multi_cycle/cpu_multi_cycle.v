@@ -1,6 +1,6 @@
-module cpu_top#(
+module cpu_multi_cycle #(
     parameter DATA_W = 32,
-    parameter ADDR_W = 8
+    parameter ADDR_W = 32
 )(
     input wire clk,
     input wire rst,
@@ -10,11 +10,11 @@ module cpu_top#(
 //==============================================================================
 // 1) PC Logic
 //==============================================================================
-    reg  [ADDR_W-1:0] pc;           // Program counter is byte-indexed (DATA_W bits)
+    reg  [ADDR_W-1:0] pc;           // Program counter is byte-indexed (ADDR_W bits)
     wire [ADDR_W-1:0] pc_next;      // Next PC value after selection logic
     wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
 
-    assign PCJump  = {pc[31:28], addr, 2'b00};    // Jump target address for J-type instructions
+    assign PCJump  = {pc[ADDR_W-1:ADDR_W-4], addr, 2'b00};    // Jump target address for J-type instructions
     assign pc_next = 
         (PCSrc == 2'b00) ? alu_out :   
         (PCSrc == 2'b01) ? alu_reg : 
@@ -24,13 +24,10 @@ module cpu_top#(
 //==============================================================================
     wire [DATA_W-1:0] mem_out;
     wire [ADDR_W-1:0] mem_addr = (IorD)? alu_reg : pc;      // memory address selection: 1 for data, 0 for instruction
-    wire [ADDR_W-1:0] mem_addr_word = mem_addr[ADDR_W+1:2]; // word-aligned address
+    wire [ADDR_W-1:0] mem_addr_word = {{2{1'b0}}, mem_addr[ADDR_W-1:2]}; // word-aligned address
     wire [DATA_W-1:0] mem_data_in = rf_regB;
 
-    memory memory_inst #(
-        .DATA_W(DATA_W),
-        .ADDR_W(ADDR_W)
-    )(
+    memory memory (
         .clk        (clk),
         .we         (memWrite),
         .addr       (mem_addr_word),
@@ -40,6 +37,7 @@ module cpu_top#(
 //==============================================================================
 // 3) Instruction fields + immediate extension
 //==============================================================================
+    wire [5:0] opcode  = instr[DATA_W-1:26];
     wire [4:0]  rs     = instr[25:21];
     wire [4:0]  rt     = instr[20:16];
     wire [4:0]  rd     = instr[15:11];
@@ -59,9 +57,7 @@ module cpu_top#(
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite, halt;
 
-    control_unit control_unit_inst #(
-        .DATA_W(DATA_W)
-    )(
+    control_unit control_unit (
         .clk            (clk),
         .rst            (rst),
         .instr          (instr),
@@ -92,9 +88,7 @@ module cpu_top#(
     wire [DATA_W-1:0] rf_data_out2;
     wire [DATA_W-1:0] rf_wdata;
 
-    register_file rf_inst#(
-        .DATA_W(DATA_W)
-    )(
+    register_file register_file (
         .clk        (clk),
         .rst        (rst),
         .we3        (regWrite),
@@ -136,9 +130,9 @@ module cpu_top#(
     wire              is_zero;
     wire              signed_less;
 
-    alu alu_inst #(
+    alu #(
         .DATA_W(DATA_W)
-    )(
+    ) alu (
         .aluControl (aluControl),
         .in_a       (alu_a),
         .in_b       (alu_b),
@@ -157,14 +151,14 @@ module cpu_top#(
     reg [DATA_W-1:0] rf_regB;     // register file output B (rt)
 
     always @(posedge clk) begin
-        if (rst)
+        if (rst) begin
             pc      <= {ADDR_W{1'b0}};
             instr   <= {DATA_W{1'b0}};
             alu_reg <= {DATA_W{1'b0}};
             mem_reg <= {DATA_W{1'b0}};
             rf_regA <= {DATA_W{1'b0}};
             rf_regB <= {DATA_W{1'b0}};
-        else
+        end else begin
             if (PCEn)
                 pc    <= pc_next;
             if (IRWrite)
@@ -173,6 +167,7 @@ module cpu_top#(
             mem_reg <= mem_out;
             rf_regA <= rf_data_out1;
             rf_regB <= rf_data_out2;
+        end
     end
 //==============================================================================
 // 8) Halt signal generation
