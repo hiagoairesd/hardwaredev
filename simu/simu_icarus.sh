@@ -42,7 +42,7 @@ echo "###############################################################"
 
 iverilog -g2012 -o "$out" \
     -y "$DESIGN" \
-    -y "$DESIGN/single_cycle" \
+    -y "$DESIGN/multi_cycle" \
     "$rtl" \
     "$tb"
 
