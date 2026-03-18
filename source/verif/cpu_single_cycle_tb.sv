@@ -595,6 +595,9 @@ module single_cycle_tb();
     //   - Expected overflowed value in R1 and MEM[0] (fib(47) = 2971215073).
         task automatic check_fibonacci_overflow;
             begin
+                $write({`ANSI_BOLD, "-----------------", `ANSI_RST});
+                $write({`ANSI_BOLD, " RUNNING FIBONACCI OVERFLOW TESTS [15] ", `ANSI_RST});
+                $display({`ANSI_BOLD, "---------------", `ANSI_RST});
                 check_reg(0, DUT.rb_inst.regs[0],  32'h00000000);
                 check_reg(1, DUT.rb_inst.regs[1],  32'h43A53F82);
                 check_reg(2, DUT.rb_inst.regs[2],  32'h6D73E55F);
