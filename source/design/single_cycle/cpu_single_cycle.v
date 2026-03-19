@@ -112,8 +112,7 @@ module cpu_single_cycle #(
     wire       take_branch, memWrite, memtoReg, jump, is_shift, imm_is_zext;
 
     control_unit control_unit (
-        .opcode         (opcode),         // Operation code
-        .funct          (funct),          // Function code
+        .instr          (instr),          // Current instruction
         .aluOut_is_zero (is_zero),        // ALU result is zero flag
         .signed_less    (signed_less),    // ALU signed less flag
         .aluControl     (aluControl),     // ALU operation control
