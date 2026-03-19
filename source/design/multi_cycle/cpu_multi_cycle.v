@@ -53,7 +53,7 @@ module cpu_multi_cycle #(
 //==============================================================================
     wire       regWrite, regDst, aluSrc;
     wire [2:0] aluControl;
-    wire       memWrite, memtoReg, jump, PCEn, is_shift, imm_is_zext, IorD, aluSrcA;
+    wire       memWrite, memtoReg, PCEn, is_shift, imm_is_zext, IorD, aluSrcA;
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite, halt;
 
