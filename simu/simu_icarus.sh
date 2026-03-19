@@ -40,10 +40,19 @@ echo "###############################################################"
 echo "### Running Compilation and Elaboration... ####################"
 echo "###############################################################"
 
+# Collect all RTL sources for the DUT by searching in the same directory where
+# the DUT file lives (e.g., single_cycle/ or multi_cycle/).
+# This avoids pulling in conflicting duplicate module definitions from other
+# subdirectories (practices/, multi_cycle/, etc.).
+rtl_dir="$(dirname "$rtl")"
+design_srcs=(
+  $(find "$rtl_dir" -type f \( -name '*.v' -o -name '*.sv' \) -print)
+)
+
 iverilog -g2012 -o "$out" \
     -y "$DESIGN" \
-    -y "$DESIGN/multi_cycle" \
-    "$rtl" \
+    -y "$rtl_dir" \
+    "${design_srcs[@]}" \
     "$tb"
 
 echo "###############################################################"

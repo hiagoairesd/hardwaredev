@@ -2,59 +2,59 @@ module register_file_tb();
 
     localparam DATA_W = 32;
     localparam NREGS = 32;
-    localparam int REG_W = $clog2(NREGS);
+    localparam int REG_ADDR_W = $clog2(NREGS);
 
     // input declarations
-    logic clock = 0;
-    logic reset = 1;
+    logic clk = 0;
+    logic rst = 1;
 
-    logic       wr;
-    logic [REG_W-1:0 ] wraddr; 
-    logic [REG_W-1:0 ] rda1;
-    logic [REG_W-1:0 ] rda2;
+    logic       we3;
+    logic [REG_ADDR_W-1:0] rd1;
+    logic [REG_ADDR_W-1:0] rd2;
+    logic [REG_ADDR_W-1:0] wa3;
     logic [DATA_W-1:0] data_in;
 
     // output declarations
     wire [DATA_W-1:0] data_out1;
     wire [DATA_W-1:0] data_out2;
+    
     // clock generation
-    always #5 clock =~clock;
+    always #5 clk = ~clk;
 
     initial begin
-        #10 reset = 0;
+        #10 rst = 0;
     end
 
-    // module instantiation
-    register_file
-    #(
+    register_file # (
+        .ADDR_W(REG_ADDR_W),
         .DATA_W(DATA_W),
-        .NREGS(NREGS)
-    ) DUT (
-        .clk        (clock),
-        .rst        (reset),
-        .wr         (wr),
-        .rd     (wraddr),
-        .rs1       (rda1),
-        .rs2       (rda2),
+        .NREGS (NREGS)
+    ) register_file (
+        .clk        (clk),
+        .rst        (rst),
+        .we3        (we3),
+        .rd1        (rd1),
+        .rd2        (rd2),
+        .wa3        (wa3),
         .data_in    (data_in),
         .data_out1  (data_out1),
-        .data_out2 (data_out2)
+        .data_out2  (data_out2)
     );
 
     initial begin
         #10
-        wr = 1'b1; wraddr = 2'b00 ; rda1 = 2'b00; rda2 = 2'b01; data_in= 8'b10101010;
+        we3 = 1'b1; wa3 = 5'd0; rd1 = 5'd0; rd2 = 5'd1; data_in = 32'hAAAAAAAA;
         #10
-        wr = 1'b1; wraddr = 2'b01 ; rda1 = 2'b10; rda2 = 2'b01; data_in= 8'b11110000;
+        we3 = 1'b1; wa3 = 5'd1; rd1 = 5'd2; rd2 = 5'd1; data_in = 32'hF0F0F0F0;
         #10
-        wr = 1'b1; wraddr = 2'b10 ; rda1 = 2'b10; rda2 = 2'b01; data_in= 8'b00001111;
+        we3 = 1'b1; wa3 = 5'd2; rd1 = 5'd2; rd2 = 5'd1; data_in = 32'h0F0F0F0F;
         #10
-        wr = 1'b0; wraddr = 2'b11 ; rda1 = 2'b11; rda2 = 2'b01; data_in= 8'b01010101;
+        we3 = 1'b0; wa3 = 5'd3; rd1 = 5'd3; rd2 = 5'd1; data_in = 32'h55555555;
     end
 
     initial begin
-        $monitor("time: %0d \t rst= %b \n wr= %b \t wraddr= %b \t rda1= %b \t rda2= %b \t data_in= %b \n data_out1= %b \t data_out2= %b",
-                $time, reset, wr, wraddr, rda1, rda2, data_in, data_out1, data_out2);
+        $monitor("time: %0d \t rst= %b \n we3= %b \t wa3= %b \t rd1= %b \t rd2= %b \t data_in= %b \n data_out1= %b \t data_out2= %b",
+                $time, rst, we3, wa3, rd1, rd2, data_in, data_out1, data_out2);
     end
 
     initial begin
