@@ -1,13 +1,19 @@
-module control_unit #(
-    parameter INSTR_W = 32
-) (
-    input wire  [5:0] opcode,
-    input wire  [5:0] funct,
-    input wire        aluOut_is_zero,
-    input wire        signed_less,
-    output wire [2:0] aluControl,
-    output wire       regWrite, regDst, aluSrc, take_branch, memWrite, memtoReg, jump, is_shift, imm_is_zext,
-    output reg        halt
+module control_unit (
+    input wire  [5:0] opcode,           // opcode field from instruction
+    input wire  [5:0] funct,            // funct field for R-type instructions
+    input wire        aluOut_is_zero,   // ALU output zero flag for branch decisions
+    input wire        signed_less,      // ALU output signed less-than flag for BLT instruction
+    output wire [2:0] aluControl,       // ALU control signal
+    output wire       regWrite,         // Register file write enable
+    output wire       regDst,           // Register destination select (0=rt, 1=rd)
+    output wire       aluSrc,           // ALU source select (0=register, 1=immediate)
+    output wire       take_branch,      // Branch taken signal for BEQ/BNE/BLT
+    output wire       memWrite,         // Memory write enable for SW instruction
+    output wire       memtoReg,         // Memory to register select (0=memory, 1=ALU)
+    output wire       jump,             // Jump signal for J instruction
+    output wire       is_shift,         // Shift signal for SLL/SRL instructions
+    output wire       imm_is_zext,      // Immediate zero-extension signal
+    output reg        halt              // Halt signal
 );
     //==================================================================================
     // 1) Opcode and funct field encoding
@@ -21,48 +27,50 @@ module control_unit #(
                 FNCT_SUB = 6'b100010, FNCT_AND = 6'b100100, FNCT_OR  = 6'b100101, 
                 FNCT_SLT = 6'b101010;
     //==================================================================================
-    // 2) Control signal generation based on opcode and funct fields
+    // 2) Word Control signal generation based on opcode and funct fields
     //==================================================================================
+
+    reg [8:0] word;
 
     always @* begin
         halt = 1'b0;
         
         case (opcode) 
-            OP_RTYPE: begin    // R-TYPE INSTRUCTION
+            OP_RTYPE: begin
                 case (funct)
-                    FNCT_ADD: word = 10'b1100100000;   // ADD
-                    FNCT_SUB: word = 10'b1101100000;   // SUB
-                    FNCT_AND: word = 10'b1100000000;   // AND
-                    FNCT_OR : word = 10'b1100010000;   // OR
-                    FNCT_SLT: word = 10'b1101110000;   // SLT  (set on less than)
-                    FNCT_SLL: word = 10'b1100110000;   // SLL  (shift left logical)
-                    FNCT_SRL: word = 10'b1101000000;   // SRL  (shift right logical)
-                    default:  word = 10'b0000000000;
+                    FNCT_ADD: word = 9'b110010000;
+                    FNCT_SUB: word = 9'b110110000;
+                    FNCT_AND: word = 9'b110000000;
+                    FNCT_OR : word = 9'b110001000;
+                    FNCT_SLT: word = 9'b110111000;
+                    FNCT_SLL: word = 9'b110011000;
+                    FNCT_SRL: word = 9'b110100000;
+                    default:  word = 9'b000000000;
                 endcase
             end
-            OP_LW  : word = 10'b1010100010;     // LW   (load word)
-            OP_SW  : word = 10'b0x101001x0;     // SW   (store word)
-            OP_BEQ : word = 10'b0x011010x0;     // BEQ  (branch if equal)
-            OP_BNE : word = 10'b0x011010x0;     // BNE  (branch if not equal)
-            OP_BLT : word = 10'b0x011010x0;     // BLT  (branch if less than)
-            OP_ADDI: word = 10'b1010100000;     // ADDi (add imm)
-            OP_ORI : word = 10'b1010010000;     // ORi  (or imm)
-            OP_JUMP: word = 10'b0xxxxxxxx1;     // JMP  (jump)
-            OP_ANDI: word = 10'b1010000000;     // ANDi (and imm)
-            OP_LUI : word = 10'b1011010000;     // LUI  (load upper immediate)
+            OP_LW  : word = 9'b101010010;
+            OP_SW  : word = 9'b001010100;
+            OP_BEQ : word = 9'b000110000;
+            OP_BNE : word = 9'b000110000;
+            OP_BLT : word = 9'b000110000;
+            OP_ADDI: word = 9'b101010000;
+            OP_ORI : word = 9'b101001000;
+            OP_JUMP: word = 9'b000000001;
+            OP_ANDI: word = 9'b101000000;
+            OP_LUI : word = 9'b101101000;
             OP_HALT: begin
-                word = 10'b0000000000;          // HALT
                 halt = 1'b1;
+                word = 9'b000000000;
             end
-            default: word = 10'b0000000000;     // NOP or undefined instruction
+            default: word = 9'b000000000;
         endcase
     end
 
-    assign {regWrite, regDst, aluSrc, aluControl, branch, memWrite, memtoReg, jump} = word;
+    assign {regWrite, regDst, aluSrc, aluControl, memWrite, memtoReg, jump} = word;
 
     //==================================================================================
     // 8) Branch handling: determine if we should take the branch based on opcode and ALU outputs
-    //==================================================================================
+    //==================================================================================halt
     //   - is_bne is true for BNE opcode (000101)
     //   - is_blt is true for BLT opcode (000110)
     //   - is_beq is true for BEQ opcode (000100)

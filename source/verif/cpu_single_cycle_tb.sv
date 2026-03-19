@@ -16,7 +16,7 @@
 //     Example: sw rt, 1(r0) writes data_mem[1].
 //   - DUT exposes internal debug signals used by this TB:
 //       DUT.pc, DUT.instr, DUT.opcode, DUT.pc_next
-//       DUT.regWrite, DUT.write_reg, DUT.rb_wdata
+//       DUT.regWrite, DUT.wa3, DUT.rf_wdata
 //       DUT.memWrite, DUT.alu_out, DUT.dm_data
 //       DUT.take_branch, DUT.jump
 //   - HALT handling:
@@ -153,7 +153,7 @@ module single_cycle_tb();
             // Architectural register writeback
             if (DUT.regWrite) begin
                 $display("t=%0t | REGWRITE | R%0d <= %08h",
-                         $time, DUT.write_reg, DUT.rb_wdata);
+                         $time, DUT.wa3, DUT.rf_wdata);
             end
 
             // Architectural memory write (store word)
@@ -191,23 +191,23 @@ module single_cycle_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/assembly/regs.hex",               DUT.instr_mem_inst.mem);
-                2:  $readmemh("../source/verif/assembly/basic_swlw.hex",         DUT.instr_mem_inst.mem);
-                3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.instr_mem_inst.mem);
-                4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.instr_mem_inst.mem);
-                5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.instr_mem_inst.mem);
-                6:  $readmemh("../source/verif/assembly/beq.hex",                DUT.instr_mem_inst.mem);
-                7:  $readmemh("../source/verif/assembly/andi.hex",               DUT.instr_mem_inst.mem);
-                8:  $readmemh("../source/verif/assembly/ori.hex",                DUT.instr_mem_inst.mem);
-                9:  $readmemh("../source/verif/assembly/lui.hex",                DUT.instr_mem_inst.mem);
-                10: $readmemh("../source/verif/assembly/sll.hex",                DUT.instr_mem_inst.mem);
-                11: $readmemh("../source/verif/assembly/srl.hex",                DUT.instr_mem_inst.mem);
-                12: $readmemh("../source/verif/assembly/bne.hex",                DUT.instr_mem_inst.mem);
-                13: $readmemh("../source/verif/assembly/blt.hex",                DUT.instr_mem_inst.mem);
-                14: $readmemh("../source/verif/assembly/fibonacci.hex",          DUT.instr_mem_inst.mem);
-                15: $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.instr_mem_inst.mem);
+                1:  $readmemh("../source/verif/assembly/regs.hex",               DUT.instr_mem.mem);
+                2:  $readmemh("../source/verif/assembly/basic_swlw.hex",         DUT.instr_mem.mem);
+                3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.instr_mem.mem);
+                4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.instr_mem.mem);
+                5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.instr_mem.mem);
+                6:  $readmemh("../source/verif/assembly/beq.hex",                DUT.instr_mem.mem);
+                7:  $readmemh("../source/verif/assembly/andi.hex",               DUT.instr_mem.mem);
+                8:  $readmemh("../source/verif/assembly/ori.hex",                DUT.instr_mem.mem);
+                9:  $readmemh("../source/verif/assembly/lui.hex",                DUT.instr_mem.mem);
+                10: $readmemh("../source/verif/assembly/sll.hex",                DUT.instr_mem.mem);
+                11: $readmemh("../source/verif/assembly/srl.hex",                DUT.instr_mem.mem);
+                12: $readmemh("../source/verif/assembly/bne.hex",                DUT.instr_mem.mem);
+                13: $readmemh("../source/verif/assembly/blt.hex",                DUT.instr_mem.mem);
+                14: $readmemh("../source/verif/assembly/fibonacci.hex",          DUT.instr_mem.mem);
+                15: $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.instr_mem.mem);
                 default:
-                    $readmemh("../source/verif/assembly/integration.hex",        DUT.instr_mem_inst.mem);
+                    $readmemh("../source/verif/assembly/integration.hex",        DUT.instr_mem.mem);
             endcase
         end
     endtask
@@ -286,9 +286,9 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING REGS TESTS [1] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd2);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd3);
+            check_reg(1, DUT.register_file.regs[1], 32'd1);
+            check_reg(2, DUT.register_file.regs[2], 32'd2);
+            check_reg(3, DUT.register_file.regs[3], 32'd3);
         end
     endtask
 
@@ -304,9 +304,9 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
             $display({`ANSI_BOLD, "--------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd42);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd42);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd42);
+            check_reg(1, DUT.register_file.regs[1], 32'd42);
+            check_mem(0, DUT.data_mem.mem[0], 32'd42);
+            check_reg(2, DUT.register_file.regs[2], 32'd42);
         end
     endtask
 
@@ -322,12 +322,12 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BORDER SW/LW TESTS [3] ", `ANSI_RST});
             $display({`ANSI_BOLD, "-------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1],           32'd32767);
-            check_reg(2, DUT.rb_inst.regs[2],          -32'sd32768);
-            check_reg(3, DUT.rb_inst.regs[3],          -32'sd1);
-            check_mem(255, DUT.data_mem_inst.mem[255], -32'sd1);
-            check_reg(4, DUT.rb_inst.regs[4],          -32'sd1);
-            check_reg(5, DUT.rb_inst.regs[5],           32'd0);
+            check_reg(1, DUT.register_file.regs[1],           32'd32767);
+            check_reg(2, DUT.register_file.regs[2],          -32'sd32768);
+            check_reg(3, DUT.register_file.regs[3],          -32'sd1);
+            check_mem(255, DUT.data_mem.mem[255], -32'sd1);
+            check_reg(4, DUT.register_file.regs[4],          -32'sd1);
+            check_reg(5, DUT.register_file.regs[5],           32'd0);
         end
     endtask
 
@@ -343,14 +343,14 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING R-TYPE (ALU) TESTS [4] ", `ANSI_RST});
             $display({`ANSI_BOLD, "-------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd5);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd3);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd8);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd2);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd1);
-            check_reg(6, DUT.rb_inst.regs[6], 32'd7);
-            check_reg(7, DUT.rb_inst.regs[7], 32'd1);
-            check_reg(8, DUT.rb_inst.regs[8], 32'd0);
+            check_reg(1, DUT.register_file.regs[1], 32'd5);
+            check_reg(2, DUT.register_file.regs[2], 32'd3);
+            check_reg(3, DUT.register_file.regs[3], 32'd8);
+            check_reg(4, DUT.register_file.regs[4], 32'd2);
+            check_reg(5, DUT.register_file.regs[5], 32'd1);
+            check_reg(6, DUT.register_file.regs[6], 32'd7);
+            check_reg(7, DUT.register_file.regs[7], 32'd1);
+            check_reg(8, DUT.register_file.regs[8], 32'd0);
         end
     endtask
 
@@ -366,10 +366,10 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING JMP TESTS [5] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd0);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd0);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd4);
+            check_reg(1, DUT.register_file.regs[1], 32'd1);
+            check_reg(2, DUT.register_file.regs[2], 32'd0);
+            check_reg(3, DUT.register_file.regs[3], 32'd0);
+            check_reg(4, DUT.register_file.regs[4], 32'd4);
         end
     endtask
 
@@ -385,12 +385,12 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BEQ TESTS [6] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd5);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd5);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd0);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd7);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd9);
-            check_reg(6, DUT.rb_inst.regs[6], 32'd123);
+            check_reg(1, DUT.register_file.regs[1], 32'd5);
+            check_reg(2, DUT.register_file.regs[2], 32'd5);
+            check_reg(3, DUT.register_file.regs[3], 32'd0);
+            check_reg(4, DUT.register_file.regs[4], 32'd7);
+            check_reg(5, DUT.register_file.regs[5], 32'd9);
+            check_reg(6, DUT.register_file.regs[6], 32'd123);
         end
     endtask
 
@@ -406,12 +406,12 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING ANDi TESTS [7] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd305398015);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd15);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd240);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd15);
-            check_mem(4, DUT.data_mem_inst.mem[4], 32'd240);
+            check_reg(1, DUT.register_file.regs[1], 32'd305397760);
+            check_reg(2, DUT.register_file.regs[2], 32'd305398015);
+            check_reg(3, DUT.register_file.regs[3], 32'd15);
+            check_reg(4, DUT.register_file.regs[4], 32'd240);
+            check_mem(0, DUT.data_mem.mem[0], 32'd15);
+            check_mem(4, DUT.data_mem.mem[4], 32'd240);
         end
     endtask
 
@@ -427,13 +427,13 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING ORi TESTS [8] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd0);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd1);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd241);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd3855);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd4095);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd241);
-            check_mem(4, DUT.data_mem_inst.mem[4], 32'd4095);
+            check_reg(1, DUT.register_file.regs[1], 32'd0);
+            check_reg(2, DUT.register_file.regs[2], 32'd1);
+            check_reg(3, DUT.register_file.regs[3], 32'd241);
+            check_reg(4, DUT.register_file.regs[4], 32'd3855);
+            check_reg(5, DUT.register_file.regs[5], 32'd4095);
+            check_mem(0, DUT.data_mem.mem[0], 32'd241);
+            check_mem(4, DUT.data_mem.mem[4], 32'd4095);
         end
     endtask
 
@@ -449,13 +449,13 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING LUI TESTS [9] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd305397760);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd0);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd4294901760);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd305441741);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd305397760);
-            check_mem(4, DUT.data_mem_inst.mem[4], 32'd4294901760);
-            check_mem(8, DUT.data_mem_inst.mem[8], 32'd305441741);
+            check_reg(1, DUT.register_file.regs[1], 32'd305397760);
+            check_reg(2, DUT.register_file.regs[2], 32'd0);
+            check_reg(3, DUT.register_file.regs[3], 32'd4294901760);
+            check_reg(4, DUT.register_file.regs[4], 32'd305441741);
+            check_mem(0, DUT.data_mem.mem[0], 32'd305397760);
+            check_mem(4, DUT.data_mem.mem[4], 32'd4294901760);
+            check_mem(8, DUT.data_mem.mem[8], 32'd305441741);
         end
     endtask
 
@@ -471,13 +471,13 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING SLL TESTS [10] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd16);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd32);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd240);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd61440);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd16);
-            check_mem(4, DUT.data_mem_inst.mem[4], 32'd61440);
+            check_reg(1, DUT.register_file.regs[1], 32'd1);
+            check_reg(2, DUT.register_file.regs[2], 32'd16);
+            check_reg(3, DUT.register_file.regs[3], 32'd32);
+            check_reg(4, DUT.register_file.regs[4], 32'd240);
+            check_reg(5, DUT.register_file.regs[5], 32'd61440);
+            check_mem(0, DUT.data_mem.mem[0], 32'd16);
+            check_mem(4, DUT.data_mem.mem[4], 32'd61440);
         end
     endtask
 
@@ -493,13 +493,13 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING SRL TESTS [11] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd2147483648);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd1073741824);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd240);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd15);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd0);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd1073741824);
-            check_mem(4, DUT.data_mem_inst.mem[4], 32'd15);
+            check_reg(1, DUT.register_file.regs[1], 32'd2147483648);
+            check_reg(2, DUT.register_file.regs[2], 32'd1073741824);
+            check_reg(3, DUT.register_file.regs[3], 32'd240);
+            check_reg(4, DUT.register_file.regs[4], 32'd15);
+            check_reg(5, DUT.register_file.regs[5], 32'd0);
+            check_mem(0, DUT.data_mem.mem[0], 32'd1073741824);
+            check_mem(4, DUT.data_mem.mem[4], 32'd15);
         end
     endtask
 
@@ -515,13 +515,13 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BNE TESTS [12] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1, DUT.rb_inst.regs[1], 32'd1);
-            check_reg(2, DUT.rb_inst.regs[2], 32'd2);
-            check_reg(3, DUT.rb_inst.regs[3], 32'd0);
-            check_reg(4, DUT.rb_inst.regs[4], 32'd5);
-            check_reg(5, DUT.rb_inst.regs[5], 32'd5);
-            check_reg(6, DUT.rb_inst.regs[6], 32'd13107);
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd13107);
+            check_reg(1, DUT.register_file.regs[1], 32'd1);
+            check_reg(2, DUT.register_file.regs[2], 32'd2);
+            check_reg(3, DUT.register_file.regs[3], 32'd0);
+            check_reg(4, DUT.register_file.regs[4], 32'd5);
+            check_reg(5, DUT.register_file.regs[5], 32'd5);
+            check_reg(6, DUT.register_file.regs[6], 32'd13107);
+            check_mem(0, DUT.data_mem.mem[0], 32'd13107);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -536,9 +536,9 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BLT TESTS [13] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_mem(0, DUT.data_mem_inst.mem[0], 32'd1);
-            check_mem(1, DUT.data_mem_inst.mem[1], 32'd1);
-            check_mem(2, DUT.data_mem_inst.mem[2], 32'd1);
+            check_mem(0, DUT.data_mem.mem[0], 32'd1);
+            check_mem(1, DUT.data_mem.mem[1], 32'd1);
+            check_mem(2, DUT.data_mem.mem[2], 32'd1);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -553,37 +553,37 @@ module single_cycle_tb();
                 $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
                 $write({`ANSI_BOLD, " RUNNING FIBONACCI TESTS [14] ", `ANSI_RST});
                 $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-                check_reg(0, DUT.rb_inst.regs[0],  32'h0000);
-                check_reg(1, DUT.rb_inst.regs[1],  32'h0A18);
-                check_reg(2, DUT.rb_inst.regs[2],  32'h1055);
-                check_reg(3, DUT.rb_inst.regs[3],  32'h1055);
-                check_reg(4, DUT.rb_inst.regs[4],  32'h0014);
-                check_reg(5, DUT.rb_inst.regs[5],  32'h0014);
-                check_reg(6, DUT.rb_inst.regs[6],  32'h0014);
-                check_reg(7, DUT.rb_inst.regs[7],  32'h0001);
-                check_mem(0,  DUT.data_mem_inst.mem[0],  32'h0000);
-                check_mem(1,  DUT.data_mem_inst.mem[1],  32'h0001);
-                check_mem(2,  DUT.data_mem_inst.mem[2],  32'h0001);
-                check_mem(3,  DUT.data_mem_inst.mem[3],  32'h0002);
-                check_mem(4,  DUT.data_mem_inst.mem[4],  32'h0003);
-                check_mem(5,  DUT.data_mem_inst.mem[5],  32'h0005);
-                check_mem(6,  DUT.data_mem_inst.mem[6],  32'h0008);
-                check_mem(7,  DUT.data_mem_inst.mem[7],  32'h000D);
-                check_mem(8,  DUT.data_mem_inst.mem[8],  32'h0015);
-                check_mem(9,  DUT.data_mem_inst.mem[9],  32'h0022);
-                check_mem(10, DUT.data_mem_inst.mem[10], 32'h0037);
-                check_mem(11, DUT.data_mem_inst.mem[11], 32'h0059);
-                check_mem(12, DUT.data_mem_inst.mem[12], 32'h0090);
-                check_mem(13, DUT.data_mem_inst.mem[13], 32'h00E9);
-                check_mem(14, DUT.data_mem_inst.mem[14], 32'h0179);
-                check_mem(15, DUT.data_mem_inst.mem[15], 32'h0262);
-                check_mem(16, DUT.data_mem_inst.mem[16], 32'h03DB);
-                check_mem(17, DUT.data_mem_inst.mem[17], 32'h063D);
-                check_mem(18, DUT.data_mem_inst.mem[18], 32'h0A18);
-                check_mem(19, DUT.data_mem_inst.mem[19], 32'h1055);
-                check_mem(30, DUT.data_mem_inst.mem[30], 32'h0001);
+                check_reg(0, DUT.register_file.regs[0],  32'h0000);
+                check_reg(1, DUT.register_file.regs[1],  32'h0A18);
+                check_reg(2, DUT.register_file.regs[2],  32'h1055);
+                check_reg(3, DUT.register_file.regs[3],  32'h1055);
+                check_reg(4, DUT.register_file.regs[4],  32'h0014);
+                check_reg(5, DUT.register_file.regs[5],  32'h0014);
+                check_reg(6, DUT.register_file.regs[6],  32'h0014);
+                check_reg(7, DUT.register_file.regs[7],  32'h0001);
+                check_mem(0,  DUT.data_mem.mem[0],  32'h0000);
+                check_mem(1,  DUT.data_mem.mem[1],  32'h0001);
+                check_mem(2,  DUT.data_mem.mem[2],  32'h0001);
+                check_mem(3,  DUT.data_mem.mem[3],  32'h0002);
+                check_mem(4,  DUT.data_mem.mem[4],  32'h0003);
+                check_mem(5,  DUT.data_mem.mem[5],  32'h0005);
+                check_mem(6,  DUT.data_mem.mem[6],  32'h0008);
+                check_mem(7,  DUT.data_mem.mem[7],  32'h000D);
+                check_mem(8,  DUT.data_mem.mem[8],  32'h0015);
+                check_mem(9,  DUT.data_mem.mem[9],  32'h0022);
+                check_mem(10, DUT.data_mem.mem[10], 32'h0037);
+                check_mem(11, DUT.data_mem.mem[11], 32'h0059);
+                check_mem(12, DUT.data_mem.mem[12], 32'h0090);
+                check_mem(13, DUT.data_mem.mem[13], 32'h00E9);
+                check_mem(14, DUT.data_mem.mem[14], 32'h0179);
+                check_mem(15, DUT.data_mem.mem[15], 32'h0262);
+                check_mem(16, DUT.data_mem.mem[16], 32'h03DB);
+                check_mem(17, DUT.data_mem.mem[17], 32'h063D);
+                check_mem(18, DUT.data_mem.mem[18], 32'h0A18);
+                check_mem(19, DUT.data_mem.mem[19], 32'h1055);
+                check_mem(30, DUT.data_mem.mem[30], 32'h0001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(31, DUT.data_mem_inst.mem[31], 32'h1055);
+                check_mem(31, DUT.data_mem.mem[31], 32'h1055);
                 $display({`ANSI_BLU, "   Stores final Fibonacci value (fib(20) = 4181)", `ANSI_RST});
             end
     endtask
@@ -598,65 +598,65 @@ module single_cycle_tb();
                 $write({`ANSI_BOLD, "-----------------", `ANSI_RST});
                 $write({`ANSI_BOLD, " RUNNING FIBONACCI OVERFLOW TESTS [15] ", `ANSI_RST});
                 $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-                check_reg(0, DUT.rb_inst.regs[0],  32'h00000000);
-                check_reg(1, DUT.rb_inst.regs[1],  32'h43A53F82);
-                check_reg(2, DUT.rb_inst.regs[2],  32'h6D73E55F);
-                check_reg(3, DUT.rb_inst.regs[3],  32'hB11924E1);
-                check_reg(4, DUT.rb_inst.regs[4],  32'h0000002F);
-                check_reg(5, DUT.rb_inst.regs[5],  32'h00000031);
-                check_reg(6, DUT.rb_inst.regs[6],  32'h0000002F);
-                check_reg(7, DUT.rb_inst.regs[7],  32'h00000001);
-                check_reg(8, DUT.rb_inst.regs[8],  32'h00000001);
-                check_reg(9, DUT.rb_inst.regs[9],  32'h00000001);
-                check_mem(0,  DUT.data_mem_inst.mem[0],  32'h00000000);
-                check_mem(1,  DUT.data_mem_inst.mem[1],  32'h00000001);
-                check_mem(2,  DUT.data_mem_inst.mem[2],  32'h00000001);
-                check_mem(3,  DUT.data_mem_inst.mem[3],  32'h00000002);
-                check_mem(4,  DUT.data_mem_inst.mem[4],  32'h00000003);
-                check_mem(5,  DUT.data_mem_inst.mem[5],  32'h00000005);
-                check_mem(6,  DUT.data_mem_inst.mem[6],  32'h00000008);
-                check_mem(7,  DUT.data_mem_inst.mem[7],  32'h0000000D);
-                check_mem(8,  DUT.data_mem_inst.mem[8],  32'h00000015);
-                check_mem(9,  DUT.data_mem_inst.mem[9],  32'h00000022);
-                check_mem(10, DUT.data_mem_inst.mem[10], 32'h00000037);
-                check_mem(11, DUT.data_mem_inst.mem[11], 32'h00000059);
-                check_mem(12, DUT.data_mem_inst.mem[12], 32'h00000090);
-                check_mem(13, DUT.data_mem_inst.mem[13], 32'h000000E9);
-                check_mem(14, DUT.data_mem_inst.mem[14], 32'h00000179);
-                check_mem(15, DUT.data_mem_inst.mem[15], 32'h00000262);
-                check_mem(16, DUT.data_mem_inst.mem[16], 32'h000003DB);
-                check_mem(17, DUT.data_mem_inst.mem[17], 32'h0000063D);
-                check_mem(18, DUT.data_mem_inst.mem[18], 32'h00000A18);
-                check_mem(19, DUT.data_mem_inst.mem[19], 32'h00001055);
-                check_mem(20, DUT.data_mem_inst.mem[20], 32'h00001A6D);
-                check_mem(21, DUT.data_mem_inst.mem[21], 32'h00002AC2);
-                check_mem(22, DUT.data_mem_inst.mem[22], 32'h0000452F);
-                check_mem(23, DUT.data_mem_inst.mem[23], 32'h00006FF1);
-                check_mem(24, DUT.data_mem_inst.mem[24], 32'h0000B520);
-                check_mem(25, DUT.data_mem_inst.mem[25], 32'h00012511);
-                check_mem(26, DUT.data_mem_inst.mem[26], 32'h0001DA31);
-                check_mem(27, DUT.data_mem_inst.mem[27], 32'h0002FF42);
-                check_mem(28, DUT.data_mem_inst.mem[28], 32'h0004D973);
-                check_mem(29, DUT.data_mem_inst.mem[29], 32'h0007D8B5);
-                check_mem(33, DUT.data_mem_inst.mem[33], 32'h0035C7E2);
-                check_mem(34, DUT.data_mem_inst.mem[34], 32'h005704E7);
-                check_mem(35, DUT.data_mem_inst.mem[35], 32'h008CCCC9);
-                check_mem(36, DUT.data_mem_inst.mem[36], 32'h00E3D1B0);
-                check_mem(37, DUT.data_mem_inst.mem[37], 32'h01709E79);
-                check_mem(38, DUT.data_mem_inst.mem[38], 32'h02547029);
-                check_mem(39, DUT.data_mem_inst.mem[39], 32'h03C50EA2);
-                check_mem(40, DUT.data_mem_inst.mem[40], 32'h06197ECB);
-                check_mem(41, DUT.data_mem_inst.mem[41], 32'h09DE8D6D);
-                check_mem(42, DUT.data_mem_inst.mem[42], 32'h0FF80C38);
-                check_mem(43, DUT.data_mem_inst.mem[43], 32'h19D699A5);
-                check_mem(44, DUT.data_mem_inst.mem[44], 32'h29CEA5DD);
-                check_mem(45, DUT.data_mem_inst.mem[45], 32'h43A53F82);
-                check_mem(46, DUT.data_mem_inst.mem[46], 32'h6D73E55F);
-                check_mem(30, DUT.data_mem_inst.mem[30], 32'h00000001);
+                check_reg(0, DUT.register_file.regs[0],  32'h00000000);
+                check_reg(1, DUT.register_file.regs[1],  32'h43A53F82);
+                check_reg(2, DUT.register_file.regs[2],  32'h6D73E55F);
+                check_reg(3, DUT.register_file.regs[3],  32'hB11924E1);
+                check_reg(4, DUT.register_file.regs[4],  32'h0000002F);
+                check_reg(5, DUT.register_file.regs[5],  32'h00000031);
+                check_reg(6, DUT.register_file.regs[6],  32'h0000002F);
+                check_reg(7, DUT.register_file.regs[7],  32'h00000001);
+                check_reg(8, DUT.register_file.regs[8],  32'h00000001);
+                check_reg(9, DUT.register_file.regs[9],  32'h00000001);
+                check_mem(0,  DUT.data_mem.mem[0],  32'h00000000);
+                check_mem(1,  DUT.data_mem.mem[1],  32'h00000001);
+                check_mem(2,  DUT.data_mem.mem[2],  32'h00000001);
+                check_mem(3,  DUT.data_mem.mem[3],  32'h00000002);
+                check_mem(4,  DUT.data_mem.mem[4],  32'h00000003);
+                check_mem(5,  DUT.data_mem.mem[5],  32'h00000005);
+                check_mem(6,  DUT.data_mem.mem[6],  32'h00000008);
+                check_mem(7,  DUT.data_mem.mem[7],  32'h0000000D);
+                check_mem(8,  DUT.data_mem.mem[8],  32'h00000015);
+                check_mem(9,  DUT.data_mem.mem[9],  32'h00000022);
+                check_mem(10, DUT.data_mem.mem[10], 32'h00000037);
+                check_mem(11, DUT.data_mem.mem[11], 32'h00000059);
+                check_mem(12, DUT.data_mem.mem[12], 32'h00000090);
+                check_mem(13, DUT.data_mem.mem[13], 32'h000000E9);
+                check_mem(14, DUT.data_mem.mem[14], 32'h00000179);
+                check_mem(15, DUT.data_mem.mem[15], 32'h00000262);
+                check_mem(16, DUT.data_mem.mem[16], 32'h000003DB);
+                check_mem(17, DUT.data_mem.mem[17], 32'h0000063D);
+                check_mem(18, DUT.data_mem.mem[18], 32'h00000A18);
+                check_mem(19, DUT.data_mem.mem[19], 32'h00001055);
+                check_mem(20, DUT.data_mem.mem[20], 32'h00001A6D);
+                check_mem(21, DUT.data_mem.mem[21], 32'h00002AC2);
+                check_mem(22, DUT.data_mem.mem[22], 32'h0000452F);
+                check_mem(23, DUT.data_mem.mem[23], 32'h00006FF1);
+                check_mem(24, DUT.data_mem.mem[24], 32'h0000B520);
+                check_mem(25, DUT.data_mem.mem[25], 32'h00012511);
+                check_mem(26, DUT.data_mem.mem[26], 32'h0001DA31);
+                check_mem(27, DUT.data_mem.mem[27], 32'h0002FF42);
+                check_mem(28, DUT.data_mem.mem[28], 32'h0004D973);
+                check_mem(29, DUT.data_mem.mem[29], 32'h0007D8B5);
+                check_mem(33, DUT.data_mem.mem[33], 32'h0035C7E2);
+                check_mem(34, DUT.data_mem.mem[34], 32'h005704E7);
+                check_mem(35, DUT.data_mem.mem[35], 32'h008CCCC9);
+                check_mem(36, DUT.data_mem.mem[36], 32'h00E3D1B0);
+                check_mem(37, DUT.data_mem.mem[37], 32'h01709E79);
+                check_mem(38, DUT.data_mem.mem[38], 32'h02547029);
+                check_mem(39, DUT.data_mem.mem[39], 32'h03C50EA2);
+                check_mem(40, DUT.data_mem.mem[40], 32'h06197ECB);
+                check_mem(41, DUT.data_mem.mem[41], 32'h09DE8D6D);
+                check_mem(42, DUT.data_mem.mem[42], 32'h0FF80C38);
+                check_mem(43, DUT.data_mem.mem[43], 32'h19D699A5);
+                check_mem(44, DUT.data_mem.mem[44], 32'h29CEA5DD);
+                check_mem(45, DUT.data_mem.mem[45], 32'h43A53F82);
+                check_mem(46, DUT.data_mem.mem[46], 32'h6D73E55F);
+                check_mem(30, DUT.data_mem.mem[30], 32'h00000001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(31, DUT.data_mem_inst.mem[31], 32'h6D73E55F);
+                check_mem(31, DUT.data_mem.mem[31], 32'h6D73E55F);
                 $display({`ANSI_BLU, "   Last valid Fibonacci value (fib(46) = 1836311903)", `ANSI_RST});
-                check_mem(32, DUT.data_mem_inst.mem[32], 32'hB11924E1);
+                check_mem(32, DUT.data_mem.mem[32], 32'hB11924E1);
                 $display({`ANSI_BLU, "   Overflow detected | value (fib(47) wrapped = 2971215073)", `ANSI_RST});
             end
         endtask
@@ -672,21 +672,21 @@ module single_cycle_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING INTEGRATION TESTS [default] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1,  DUT.rb_inst.regs[1],      32'd10);
-            check_reg(2,  DUT.rb_inst.regs[2],      32'd15);
-            check_reg(3,  DUT.rb_inst.regs[3],      32'd65536);
-            check_reg(4,  DUT.rb_inst.regs[4],      32'd40);
-            check_reg(5,  DUT.rb_inst.regs[5],      32'd20);
-            check_reg(7,  DUT.rb_inst.regs[7],      32'd15);
-            check_reg(8,  DUT.rb_inst.regs[8],      32'd31);
-            check_reg(9,  DUT.rb_inst.regs[9],      32'd15);
-            check_reg(10, DUT.rb_inst.regs[10],     32'd25);
-            check_reg(11, DUT.rb_inst.regs[11],     32'd10);
-            check_mem(0,  DUT.data_mem_inst.mem[0], 32'd25);
-            check_reg(12, DUT.rb_inst.regs[12],     32'd25);
-            check_reg(13, DUT.rb_inst.regs[13],     32'd1);
-            check_reg(14, DUT.rb_inst.regs[14],     32'd0);
-            check_mem(1,  DUT.data_mem_inst.mem[1], 32'd0);
+            check_reg(1,  DUT.register_file.regs[1],      32'd10);
+            check_reg(2,  DUT.register_file.regs[2],      32'd15);
+            check_reg(3,  DUT.register_file.regs[3],      32'd65536);
+            check_reg(4,  DUT.register_file.regs[4],      32'd40);
+            check_reg(5,  DUT.register_file.regs[5],      32'd20);
+            check_reg(7,  DUT.register_file.regs[7],      32'd15);
+            check_reg(8,  DUT.register_file.regs[8],      32'd31);
+            check_reg(9,  DUT.register_file.regs[9],      32'd15);
+            check_reg(10, DUT.register_file.regs[10],     32'd25);
+            check_reg(11, DUT.register_file.regs[11],     32'd10);
+            check_mem(0,  DUT.data_mem.mem[0], 32'd25);
+            check_reg(12, DUT.register_file.regs[12],     32'd25);
+            check_reg(13, DUT.register_file.regs[13],     32'd1);
+            check_reg(14, DUT.register_file.regs[14],     32'd0);
+            check_mem(1,  DUT.data_mem.mem[1], 32'd0);
         end
     endtask
 
