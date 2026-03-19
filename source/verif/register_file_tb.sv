@@ -62,8 +62,8 @@ module register_file_tb();
     end
 
     initial begin
-        $dumpfile("registers_bank.vcd");
-        $dumpvars(0, registers_bank_tb);
+        $dumpfile("register_file.vcd");
+        $dumpvars(0, register_file_tb);
     end
     
 endmodule
