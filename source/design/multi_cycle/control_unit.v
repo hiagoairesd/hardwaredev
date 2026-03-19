@@ -1,6 +1,5 @@
 module control_unit #(
-    parameter DATA_W      = 32,
-    parameter CTRL_WORD_W = 10
+    parameter DATA_W      = 32
 ) (
     input wire              clk,
     input wire              rst,
@@ -59,7 +58,9 @@ module control_unit #(
 // 4) State transition logic (1st block): combinational logic to determine next state
 //===================================================================================
     reg [3:0] state, nstate;
-    always @* 
+    always @* begin
+        halt = 1'b0; // default to not halt; will be set to 1 in HALT state
+        
         case(state)
             FETCH : nstate = DECODE;
             DECODE: begin
@@ -95,6 +96,7 @@ module control_unit #(
             HALT          : nstate = HALT;
             default: nstate = FETCH;
         endcase
+    end
 //=================================================================================
 // 5) Current state storage (2nd block): sequential logic to update current state
 //=================================================================================

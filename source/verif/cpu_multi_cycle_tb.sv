@@ -61,7 +61,7 @@ module cpu_multi_cycle_tb();
 
     // Maximum number of cycles the TB will allow before declaring TIMEOUT.
     // This is a safety net to prevent infinite simulations if HALT is not reached.
-    integer max_cycles = 2500;
+    integer max_cycles = 500;
 
     //==============================================================================
     // 2) Signals (TB <-> DUT) + TB runtime config
@@ -84,7 +84,10 @@ module cpu_multi_cycle_tb();
     // 3) DUT instantiation
     //==============================================================================
 
-    cpu_multi_cycle DUT (
+    cpu_multi_cycle #(
+        .DATA_W(DATA_W),
+        .ADDR_W(ADDR_W)
+    ) DUT (
         .clk    (clk),
         .rst    (rst),
         .halted (halted)
@@ -160,11 +163,11 @@ module cpu_multi_cycle_tb();
             end
 
             // Control-flow decisions
-            if (DUT.take_branch) begin
+            if (DUT.control_unit.take_branch) begin
                 $display("t=%0t | BRANCH taken -> pc_next=%0d",
                          $time, DUT.pc_next);
             end
-            if (DUT.jump) begin
+            if (DUT.PCSrc == 2'b10) begin
                 $display("t=%0t | JUMP -> pc_next=%0d",
                          $time, DUT.pc_next);
             end

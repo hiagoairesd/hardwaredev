@@ -27,7 +27,10 @@ module cpu_multi_cycle #(
     wire [ADDR_W-1:0] mem_addr_word = {{2{1'b0}}, mem_addr[ADDR_W-1:2]}; // word-aligned address
     wire [DATA_W-1:0] mem_data_in = rf_regB;
 
-    memory memory (
+    memory #(
+        .ADDR_W(ADDR_W),
+        .DATA_W(DATA_W)
+    ) memory (
         .clk        (clk),
         .we         (memWrite),
         .addr       (mem_addr_word),
@@ -159,14 +162,18 @@ module cpu_multi_cycle #(
             rf_regA <= {DATA_W{1'b0}};
             rf_regB <= {DATA_W{1'b0}};
         end else begin
-            if (PCEn)
-                pc    <= pc_next;
-            if (IRWrite)
-                instr <= mem_out;
-            alu_reg <= alu_out;
-            mem_reg <= mem_out;
-            rf_regA <= rf_data_out1;
-            rf_regB <= rf_data_out2;
+            if(!halt) begin
+                if (PCEn) begin
+                    pc    <= pc_next;
+                end
+                if (IRWrite) begin
+                    instr <= mem_out;
+                end
+                alu_reg <= alu_out;
+                mem_reg <= mem_out;
+                rf_regA <= rf_data_out1;
+                rf_regB <= rf_data_out2;
+            end
         end
     end
 //==============================================================================

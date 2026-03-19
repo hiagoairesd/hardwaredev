@@ -110,7 +110,7 @@ module control_unit_tb();
         signed_less = 1'b0;
         
         // R-TYPE OPERATIONS (is_shift=0, imm_is_zext=0, halt=0) 
-        $display("\n\t\tR-TYPE OPERATIONS");
+        $display("\n------------------------------------ R-TYPE OPERATIONS ------------------------------------\n");
         
         $display("\t\t\tADD (no shift, no zero-ext)");
         instr = 32'b00000001000010010101000000100000; 
@@ -133,7 +133,7 @@ module control_unit_tb();
         #5 check_extended(9'b110111000, 1'b0, 1'b0, 1'b0, 1'b0);
         
         // SHIFT INSTRUCTIONS (is_shift=1) 
-        $display("\n\t\tSHIFT INSTRUCTIONS");
+        $display("\n------------------------------------ SHIFT INSTRUCTIONS ------------------------------------\n");
         
         $display("\t\t\tSLL (is_shift=1)");
         instr = 32'b00000001010010110100000000000000; 
@@ -144,7 +144,7 @@ module control_unit_tb();
         #5 check_extended(9'b110100000, 1'b0, 1'b1, 1'b0, 1'b0);
         
         // LOAD/STORE (no shift, no zero-ext, no take_branch) 
-        $display("\n\t\t\tLOAD/STORE OPERATIONS");
+        $display("\n------------------------------------ LOAD/STORE OPERATIONS ------------------------------------\n");
         
         $display("\t\t\tLW (load)");
         instr = 32'b10001111101010000000000000001100; 
@@ -155,7 +155,7 @@ module control_unit_tb();
         #5 check_extended(9'b001010100, 1'b0, 1'b0, 1'b0, 1'b0);
         
         // BRANCH INSTRUCTIONS (take_branch varies with is_zero/signed_less) 
-        $display("\n\t\tBRANCH INSTRUCTIONS");
+        $display("\n------------------------------------ BRANCH INSTRUCTIONS ------------------------------------\n");
         
         $display("\t\t\tBEQ - take_branch=1 when is_zero=1");
         is_zero = 1'b1;
@@ -189,7 +189,7 @@ module control_unit_tb();
         #5 check_extended(9'b000110000, 1'b0, 1'b0, 1'b0, 1'b0);
         
         // IMMEDIATE OPERATIONS WITH ZERO-EXTEND 
-        $display("\n\t\tIMMEDIATE OPERATIONS");
+        $display("\n------------------------------------ IMMEDIATE OPERATIONS ------------------------------------\n");
         
         $display("\t\t\tADDi (no zero-ext, sign-extend)");
         instr = 32'b00100001000010010000000000000101; 
@@ -208,27 +208,27 @@ module control_unit_tb();
         #5 check_extended(9'b101101000, 1'b0, 1'b0, 1'b1, 1'b0);
         
         // JUMP INSTRUCTION 
-        $display("\n\t\tJUMP INSTRUCTION");
+        $display("\n------------------------------------ JUMP INSTRUCTION ------------------------------------\n");
         
         $display("\t\t\tJ (jump, no shift, no zero-ext)");
         instr = 32'b00001000000000000000000000000100; 
         #5 check_extended(9'b000000001, 1'b0, 1'b0, 1'b0, 1'b0);
         
         // HALT 
-        $display("\n\t\tHALT INSTRUCTION");
+        $display("\n------------------------------------ HALT INSTRUCTION ------------------------------------\n");
         
         $display("\t\t\tHALT (halt=1)");
         instr = 32'b11111100000000000000000000000000; 
         #5 check_extended(9'b000000000, 1'b0, 1'b0, 1'b0, 1'b1);
         
         // INVALID INSTRUCTIONS 
-        $display("\n\t\tINVALID INSTRUCTIONS");
+        $display("\n------------------------------------ INVALID INSTRUCTIONS ------------------------------------\n");
         
         $display("\t\t\tInvalid opcode (all zeros except bits 27-26)");
         instr = 32'b01010100000000000000000000000000; 
         #5 check_extended(9'b000000000, 1'b0, 1'b0, 1'b0, 1'b0);
         
-        $display("\n\t\t\tALL TESTS PASSED");
+        $display("\n\t\t\t\tALL TESTS PASSED");
         $finish;
     end
 
