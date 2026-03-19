@@ -68,9 +68,9 @@ module control_unit (
 
     assign {regWrite, regDst, aluSrc, aluControl, memWrite, memtoReg, jump} = word;
 
-    //==================================================================================
-    // 8) Branch handling: determine if we should take the branch based on opcode and ALU outputs
-    //==================================================================================halt
+    //============================================================================================
+    // 3) Branch handling: determine if we should take the branch based on opcode and ALU outputs
+    //============================================================================================
     //   - is_bne is true for BNE opcode (000101)
     //   - is_blt is true for BLT opcode (000110)
     //   - is_beq is true for BEQ opcode (000100)
@@ -86,9 +86,9 @@ module control_unit (
                          (is_bne && ~aluOut_is_zero) |
                          (is_blt && signed_less);
 
-    //==================================================================================
-    // 9) Special case handling for shift instructions: determine if current instruction is a shift and adjust control signals accordingly
-    //================================================================================
+    //====================================================================================================================================
+    // 4) Special case handling for shift instructions: determine if current instruction is a shift and adjust control signals accordingly
+    //====================================================================================================================================
 
     assign is_shift = (opcode == OP_RTYPE) &
                       (funct  == FNCT_SLL  | funct == FNCT_SRL);
