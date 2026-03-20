@@ -1,0 +1,20 @@
+// --- DATA SEGMENT ---
+@80          // Define o ponteiro de gravação para o endereço 128 (0x80)
+0000002a     // Valor inicial: 42 (hex 2a)
+
+// --- TEXT SEGMENT ---
+@00          // Define o ponteiro para o início da memória de instruções
+20100080     // [0] addi $s0, $zero, 128 (Prepara o endereço base 0x80 em $s0)
+8e080000     // [4] lw   $t0, 0($s0)    (Busca o 42 na memória e põe em $t0)
+21080001     // [8] addi $t0, $t0, 1    (Soma 1: 42 + 1 = 43)
+ae080000     // [12] sw  $t0, 0($s0)    (Salva 43 de volta no endereço 128)
+ae080001     // [16] sw  $t0, 1($s0)    (Salva 43 no endereço 129)
+08000006     // [20] j   6              (Pulo incondicional para o Halt)
+fc000000     // [24] halt               (Finaliza a execução)
+
+
+
+
+
+2- $s0 <- 128
+3- 

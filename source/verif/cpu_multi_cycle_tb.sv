@@ -192,7 +192,7 @@ module cpu_multi_cycle_tb();
         begin
             case(test_id)
                 1:  $readmemh("../source/verif/assembly/memoryTest.hex",         DUT.memory.mem);
-                //2:  $readmemh("../source/verif/assembly/basic_swlw.hex",         DUT.memory.mem);
+                2:  $readmemh("../source/verif/assembly/memorySegmentation.hex", DUT.memory.mem);
                 //3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.memory.mem);
                 //4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.memory.mem);
                 //5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.memory.mem);
@@ -293,16 +293,16 @@ module cpu_multi_cycle_tb();
     endtask
 
     //------------------------------------------------------------------------------
-    // basic_swlw_test()
+    // memorySegmentation_test()
     // Test goal:
     //   - Validates SW/LW basic path and addressing (test_id=2).
     // PASS criteria:
     //   - R1=42 stored at MEM[0], later loaded into R2=42
     //------------------------------------------------------------------------------
-    task automatic basic_swlw_test;
+    task automatic memorySegmentation_tests;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
-            $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING MEMORY SEGMENTATION TESTS [2] ", `ANSI_RST});
             $display({`ANSI_BOLD, "--------", `ANSI_RST});
             check_reg(1, DUT.register_file.regs[1], 32'd42);
             check_mem(0, DUT.memory.mem[0], 32'd42);
@@ -746,7 +746,7 @@ module cpu_multi_cycle_tb();
             // 5) Check results
             case (id)
                 1:  reg_tests();
-                //2:  basic_swlw_test();
+                2:  memorySegmentation_tests();
                 //3:  border_swlw_test();
                 //4:  rtype_test_test();
                 //5:  jump_test();
