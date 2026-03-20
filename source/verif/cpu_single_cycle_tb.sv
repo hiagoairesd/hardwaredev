@@ -136,40 +136,37 @@ module single_cycle_tb();
     //==============================================================================
     // 7) Monitors / Trace (passive observers only)
     //==============================================================================
-
-    // Trace per cycle: PC + instr + opcode (lightweight)
-    // Note: this is passive; it does not drive any DUT input.
     always @(posedge clk) begin
-        if (!rst && trace) begin
-            $display("t=%0t pc=%0d instr=%08h opcode=%02h",
-                     $time, DUT.pc, DUT.instr, DUT.opcode);
-        end
-    end
-
-    // Trace_w: commits and control-flow events (detailed)
-    // Note: printed on posedge after DUT state updates for the cycle.
-    always @(posedge clk) begin
-        if (!rst && trace_w) begin
-            // Architectural register writeback
-            if (DUT.regWrite) begin
-                $display("t=%0t | REGWRITE | R%0d <= %08h",
-                         $time, DUT.wa3, DUT.rf_wdata);
+        #1; // Synchronization delay: samples data after the clock edge transition
+        if (!rst) begin
+            // Trace per cycle: PC + instr + opcode (lightweight)
+            // Note: this is passive; it does not drive any DUT input.
+            if (trace) begin
+                $display("t=%0t pc=%0d instr=%08h opcode=%02h",
+                         $time, DUT.pc, DUT.instr, DUT.opcode);
             end
-
-            // Architectural memory write (store word)
-            if (DUT.memWrite) begin
-                $display("t=%0t | MEMWRITE | mem[%0d] <= %08h",
-                         $time, DUT.alu_out[ADDR_W-1:0], DUT.dm_data);
-            end
-
-            // Control-flow decisions
-            if (DUT.take_branch) begin
-                $display("t=%0t | BRANCH taken -> pc_next=%0d",
-                         $time, DUT.pc_next);
-            end
-            if (DUT.jump) begin
-                $display("t=%0t | JUMP -> pc_next=%0d",
-                         $time, DUT.pc_next);
+            // Trace_w: commits and control-flow events (detailed)
+            // Note: printed after DUT state updates for the cycle.
+            if (trace_w) begin
+                // Architectural register writeback
+                if (DUT.regWrite) begin
+                    $display("t=%0t | REGWRITE | R%0d <= %08h",
+                             $time, DUT.wa3, DUT.rf_wdata);
+                end
+                // Architectural memory write (store word)
+                if (DUT.memWrite) begin
+                    $display("t=%0t | MEMWRITE | mem[%0d] <= %08h",
+                             $time, DUT.alu_out[ADDR_W-1:0], DUT.dm_data);
+                end
+                // Control-flow decisions
+                if (DUT.take_branch) begin
+                    $display("t=%0t | BRANCH taken -> pc_next=%0d",
+                             $time, DUT.pc_next);
+                end
+                if (DUT.jump) begin
+                    $display("t=%0t | JUMP -> pc_next=%0d",
+                             $time, DUT.pc_next);
+                end
             end
         end
     end
