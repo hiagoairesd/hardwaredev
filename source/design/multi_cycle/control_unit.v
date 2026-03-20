@@ -59,8 +59,6 @@ module control_unit #(
 //===================================================================================
     reg [3:0] state, nstate;
     always @* begin
-        halt = 1'b0; // default to not halt; will be set to 1 in HALT state
-        
         case(state)
             FETCH : nstate = DECODE;
             DECODE: begin
@@ -109,7 +107,8 @@ module control_unit #(
 //=================================================================================
 // 6) Output generation (3rd block): combinational logic to generate control signals based on current state
 //=================================================================================
-    always @* 
+    always @* begin
+        halt = 1'b0;
         case(state)
         //------------------------------------------------------------------------------
         // (S0) Fetch state: fetch instruction from memory
@@ -240,6 +239,7 @@ module control_unit #(
         //------------------------------------------------------------------------------
         // (S11) Execute immediate state: perform ALU operation with immediate value
             EXECUTE_IMM: begin
+                aluSrcA    = 1'b1;
                 aluSrcB    = 2'b10;     // select sign-extended immediate for ALU input B
                 IRWrite    = 1'b0;
                 memWrite   = 1'b0;
@@ -265,6 +265,7 @@ module control_unit #(
                 regWrite   = 1'b0;
             end
         endcase
+    end
 //==============================================================================
 // 7) ALU control logic: combinational logic to generate ALU control signals based on opcode and funct fields
 //==============================================================================

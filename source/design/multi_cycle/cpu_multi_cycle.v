@@ -4,7 +4,7 @@ module cpu_multi_cycle #(
 )(
     input wire clk,
     input wire rst,
-    output wire halted
+    output wire halt
 );
 
 //==============================================================================
@@ -58,7 +58,7 @@ module cpu_multi_cycle #(
     wire [2:0] aluControl;
     wire       memWrite, memtoReg, PCEn, is_shift, imm_is_zext, IorD, aluSrcA;
     wire [1:0] aluSrcB, PCSrc;
-    wire       IRWrite, PCWrite, halt;
+    wire       IRWrite, PCWrite;
 
     control_unit control_unit (
         .clk            (clk),
@@ -176,9 +176,5 @@ module cpu_multi_cycle #(
             end
         end
     end
-//==============================================================================
-// 8) Halt signal generation
-//==============================================================================
-    assign halted = halt;
 endmodule
     

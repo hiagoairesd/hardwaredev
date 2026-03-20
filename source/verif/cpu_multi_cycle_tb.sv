@@ -7,7 +7,7 @@
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
 //   - Applies reset, runs the CPU for up to max_cycles cycles
-//   - Terminates when DUT raises halted==1 (HALT instruction observed by DUT)
+//   - Terminates when DUT raises halt==1 (HALT instruction observed by DUT)
 //   - Checks architectural state (register file + data memory) at end
 //
 // ASSUMPTIONS / CONTRACT (IMPORTANT)
@@ -20,8 +20,8 @@
 //       DUT.memWrite, DUT.alu_out, DUT.mem_data_in
 //       DUT.take_branch, DUT.jump
 //   - HALT handling:
-//       DUT asserts halted==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
-//       TB ends execution as soon as halted is observed (posedge clk polling).
+//       DUT asserts halt==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
+//       TB ends execution as soon as halt is observed (posedge clk polling).
 //
 // PLUSARGS
 //   +test=<id>      : selects which program to load / which checker to run
@@ -74,11 +74,11 @@ module cpu_multi_cycle_tb();
     // Selected test id (from +test=<id>)
     integer test_id;
 
-    // Trace controls (from +trace / +trace_w)
-    bit trace, trace_w;
+    // Trace controls (from +trace / +trace_w / +trace_m)
+    bit trace, trace_w, trace_m;
 
     // DUT-provided halt indication
-    wire halted;
+    wire halt;
 
     //==============================================================================
     // 3) DUT instantiation
@@ -90,7 +90,7 @@ module cpu_multi_cycle_tb();
     ) DUT (
         .clk    (clk),
         .rst    (rst),
-        .halted (halted)
+        .halt (halt)
     );
 
     //==============================================================================
@@ -122,8 +122,10 @@ module cpu_multi_cycle_tb();
         // trace modes:
         //   +trace_w : detailed (writes/branches/jumps)
         //   +trace   : lightweight (pc/instr/opcode) AND forces trace_w
+        //   +trace_m : microarchitectural (internal signals like reg A/B, ALU out)
         trace_w = $test$plusargs("trace_w");
         trace   = $test$plusargs("trace") && !trace_w;
+        trace_m = $test$plusargs("trace_m");
         if (trace) trace_w = 1'b1;
 
         // test selection: +test=<id>
@@ -136,40 +138,38 @@ module cpu_multi_cycle_tb();
     //==============================================================================
     // 7) Monitors / Trace (passive observers only)
     //==============================================================================
-
-    // Trace per cycle: PC + instr + opcode (lightweight)
-    // Note: this is passive; it does not drive any DUT input.
+    // Single synchronized debug block
     always @(posedge clk) begin
-        if (!rst && trace) begin
-            $display("t=%0t pc=%0d instr=%08h opcode=%02h",
-                     $time, DUT.pc, DUT.instr, DUT.opcode);
-        end
-    end
-
-    // Trace_w: commits and control-flow events (detailed)
-    // Note: printed on posedge after DUT state updates for the cycle.
-    always @(posedge clk) begin
-        if (!rst && trace_w) begin
-            // Architectural register writeback
-            if (DUT.regWrite) begin
-                $display("t=%0t | REGWRITE | R%0d <= %08h",
-                         $time, DUT.wa3, DUT.rf_wdata);
+        // Tiny delay (#1) to ensure all internal signals to stabilize after the clock edge
+        #1;
+        if (!rst) begin
+            // 1. Primary Trace (Time, PC, Instr, State)
+            if (trace) begin
+                $display("t=%0t [PC=%0d] [Instr=%08h] [State=%s]",
+                         $time, DUT.pc, DUT.instr, get_state_name(DUT.control_unit.state));
             end
-
-            // Architectural memory write (store word)
-            if (DUT.memWrite) begin
-                $display("t=%0t | MEMWRITE | mem[%0d] <= %08h",
-                         $time, DUT.alu_out[ADDR_W-1:0], DUT.mem_data_in);
+            // 2. Internal Microarchitecture Trace (A, B, ALUOut)
+            if (trace_m) begin
+                $display("   [INTERNAL] A=%h | B=%h | ALUOut=%h | State=%0d", 
+                         DUT.rf_regA, DUT.rf_regB, DUT.alu_reg, DUT.control_unit.state);
             end
-
-            // Control-flow decisions
-            if (DUT.control_unit.take_branch) begin
-                $display("t=%0t | BRANCH taken -> pc_next=%0d",
-                         $time, DUT.pc_next);
-            end
-            if (DUT.PCSrc == 2'b10) begin
-                $display("t=%0t | JUMP -> pc_next=%0d",
-                         $time, DUT.pc_next);
+            // 3. Writeback/Commit Trace (Events)
+            if (trace_w) begin
+                // Register Write
+                if (DUT.regWrite && (DUT.control_unit.state == 4'd4 || DUT.control_unit.state == 4'd7 || DUT.control_unit.state == 4'd9)) begin
+                    $display("   >>> REGWRITE | R%0d <= %08h (Committed)", DUT.wa3, DUT.rf_wdata);
+                end
+                // Memory Write
+                if (DUT.memWrite && DUT.control_unit.state == 4'd5) begin
+                    $display("   >>> MEMWRITE | mem[%0d] <= %08h", DUT.alu_out, DUT.mem_data_in);
+                end
+                // Jump / Branch Events
+                if (DUT.control_unit.state == 4'd10) begin
+                    $display("   >>> JUMP -> Target: %0d", DUT.pc_next);
+                end
+                if (DUT.control_unit.state == 4'd8 && DUT.control_unit.take_branch) begin
+                    $display("   >>> BRANCH Taken -> Target: %0d", DUT.pc_next);
+                end
             end
         end
     end
@@ -705,7 +705,7 @@ module cpu_multi_cycle_tb();
     //   5) Run the test-specific checker for id
     //
     // Failure modes:
-    //   - TIMEOUT if halted is not observed within max_cycles
+    //   - TIMEOUT if halt is not observed within max_cycles
     //   - Checker failure if any reg/mem mismatch is detected
     //------------------------------------------------------------------------------
     task automatic run_test(input integer id);
@@ -730,14 +730,14 @@ module cpu_multi_cycle_tb();
             // 4) Run loop: stop at HALT or after max_cycles
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
-                if (DUT.halted == 1'b1) begin
+                if (DUT.halt) begin
                     $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.pc);
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
 
             // Enforce termination condition
-            if (DUT.halted != 1'b1) begin
+            if (DUT.halt != 1'b1) begin
                 $fatal(1,
                        "\033[1;31m\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t\033[0m",
                        max_cycles, DUT.pc, $time);
@@ -779,4 +779,23 @@ module cpu_multi_cycle_tb();
         run_test(test_id);
         $finish;
     end
+
+    function string get_state_name(input [3:0] state);
+        case (state)
+            4'd0:  return "FETCH";
+            4'd1:  return "DECODE";
+            4'd2:  return "MEM_ADR";
+            4'd3:  return "MEM_READ";
+            4'd4:  return "MEM_WB";
+            4'd5:  return "MEM_WRITE";
+            4'd6:  return "EXEC_R";
+            4'd7:  return "ALU_WB";
+            4'd8:  return "BRANCH";
+            4'd9:  return "IMM_WB";
+            4'd10: return "JUMP";
+            4'd11: return "EXEC_IMM";
+            4'd12: return "HALT";
+            default: return "UNKNOWN";
+        endcase
+    endfunction
 endmodule
