@@ -191,23 +191,23 @@ module cpu_multi_cycle_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/cpu/assembly/memoryTest.hex",         DUT.memory.mem);
-                2:  $readmemh("../source/verif/cpu/assembly/memorySegmentation.hex", DUT.memory.mem);
-                3:  $readmemh("../source/verif/cpu/assembly/border_swlw.hex",        DUT.memory.mem);
-                //4:  $readmemh("../source/verif/cpu/assembly/rtype.hex",              DUT.memory.mem);
-                //5:  $readmemh("../source/verif/cpu/assembly/jump.hex",               DUT.memory.mem);
-                //6:  $readmemh("../source/verif/cpu/assembly/beq.hex",                DUT.memory.mem);
-                //7:  $readmemh("../source/verif/cpu/assembly/andi.hex",               DUT.memory.mem);
-                //8:  $readmemh("../source/verif/cpu/assembly/ori.hex",                DUT.memory.mem);
-                //9:  $readmemh("../source/verif/cpu/assembly/lui.hex",                DUT.memory.mem);
-                //10: $readmemh("../source/verif/cpu/assembly/sll.hex",                DUT.memory.mem);
-                //11: $readmemh("../source/verif/cpu/assembly/srl.hex",                DUT.memory.mem);
-                //12: $readmemh("../source/verif/cpu/assembly/bne.hex",                DUT.memory.mem);
-                //13: $readmemh("../source/verif/cpu/assembly/blt.hex",                DUT.memory.mem);
-                //14: $readmemh("../source/verif/cpu/assembly/fibonacci.hex",          DUT.memory.mem);
-                //15: $readmemh("../source/verif/cpu/assembly/fibonacci_overflow.hex", DUT.memory.mem);
-                //default:
-                //    $readmemh("../source/verif/cpu/assembly/integration.hex",        DUT.memory.mem);
+                1:  $readmemh("../source/verif/cpu/multi_cycle/assembly/regs.hex",               DUT.memory.mem);
+                // 2:  $readmemh("../source/verif/cpu/multi_cycle/assembly/basic_swlw.hex",         DUT.memory.mem);
+                // 3:  $readmemh("../source/verif/cpu/multi_cycle/assembly/border_swlw.hex",        DUT.memory.mem);
+                // 4:  $readmemh("../source/verif/cpu/multi_cycle/assembly/rtype.hex",              DUT.memory.mem);
+                // 5:  $readmemh("../source/verif/cpu/multi_cycle/assembly/jump.hex",               DUT.memory.mem);
+                // 6:  $readmemh("../source/verif/cpu/multi_cycle/assembly/beq.hex",                DUT.memory.mem);
+                // 7:  $readmemh("../source/verif/cpu/multi_cycle/assembly/andi.hex",               DUT.memory.mem);
+                // 8:  $readmemh("../source/verif/cpu/multi_cycle/assembly/ori.hex",                DUT.memory.mem);
+                // 9:  $readmemh("../source/verif/cpu/multi_cycle/assembly/lui.hex",                DUT.memory.mem);
+                // 10: $readmemh("../source/verif/cpu/multi_cycle/assembly/sll.hex",                DUT.memory.mem);
+                // 11: $readmemh("../source/verif/cpu/multi_cycle/assembly/srl.hex",                DUT.memory.mem);
+                // 12: $readmemh("../source/verif/cpu/multi_cycle/assembly/bne.hex",                DUT.memory.mem);
+                // 13: $readmemh("../source/verif/cpu/multi_cycle/assembly/blt.hex",                DUT.memory.mem);
+                // 14: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci.hex",          DUT.memory.mem);
+                // 15: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci_overflow.hex", DUT.memory.mem);
+                // default:
+                    // $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
             endcase
         end
     endtask
@@ -274,14 +274,13 @@ module cpu_multi_cycle_tb();
     // 10) Test-specific checks (catalog grouped)
     //==============================================================================
 
-    //------------------------------------------------------------------------------
-    // reg_tests()
+    // regs_test()
     // Test goal:
     //   - Validates basic register writes for the regs program (test_id=1).
     // PASS criteria:
     //   - R1=1, R2=2, R3=3
     //------------------------------------------------------------------------------
-    task automatic reg_tests;
+    task automatic regs_test;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING REGS TESTS [1] ", `ANSI_RST});
@@ -293,16 +292,22 @@ module cpu_multi_cycle_tb();
     endtask
 
     //------------------------------------------------------------------------------
-    // memorySegmentation_test()
+    // basic_swlw_test()
     // Test goal:
     //   - Validates SW/LW basic path and addressing (test_id=2).
     // PASS criteria:
     //   - R1=42 stored at MEM[0], later loaded into R2=42
     //------------------------------------------------------------------------------
-    task automatic memorySegmentation_tests;
+   // check_basic_swlw()
+    // Test goal:
+    //   - Validates SW/LW basic path and addressing (test_id=2).
+    // PASS criteria:
+    //   - R1=42 stored at MEM[0], later loaded into R2=42
+    //------------------------------------------------------------------------------
+    task automatic basic_swlw_test;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
-            $write({`ANSI_BOLD, " RUNNING MEMORY SEGMENTATION TESTS [2] ", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
             $display({`ANSI_BOLD, "--------", `ANSI_RST});
             check_reg(1, DUT.register_file.regs[1], 32'd42);
             check_mem(0, DUT.memory.mem[0], 32'd42);
@@ -318,14 +323,16 @@ module cpu_multi_cycle_tb();
     //   - Specific signed boundary values in registers and MEM[255].
     //------------------------------------------------------------------------------
     task automatic border_swlw_test;
+        int mem_word_idx;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BORDER SW/LW TESTS [3] ", `ANSI_RST});
             $display({`ANSI_BOLD, "-------", `ANSI_RST});
+            mem_word_idx = (8'hFF >> 2);
             check_reg(1, DUT.register_file.regs[1],           32'd32767);
             check_reg(2, DUT.register_file.regs[2],          -32'sd32768);
             check_reg(3, DUT.register_file.regs[3],          -32'sd1);
-            check_mem(255, DUT.memory.mem[255], -32'sd1);
+            check_mem(mem_word_idx, DUT.memory.mem[mem_word_idx], -32'sd1);
             check_reg(4, DUT.register_file.regs[4],          -32'sd1);
             check_reg(5, DUT.register_file.regs[5],           32'd0);
         end
@@ -745,22 +752,22 @@ module cpu_multi_cycle_tb();
 
             // 5) Check results
             case (id)
-                1:  reg_tests();
-                2:  memorySegmentation_tests();
+                1:  regs_test();
+                2:  basic_swlw_test();
                 3:  border_swlw_test();
-                //4:  rtype_test_test();
-                //5:  jump_test();
-                //6:  beq_test();
-                //7:  andi_test();
-                //8:  ori_test();
-                //9:  lui_test();
-                //10: sll_test();
-                //11: srl_test();
-                //12: bne_test();
-                //13: blt_test();
-                //14: fibonacci_test();
-                //15: fibonacci_overflow_test();
-                //default: integration_test();
+                4:  rtype_test_test();
+                5:  jump_test();
+                6:  beq_test();
+                7:  andi_test();
+                8:  ori_test();
+                9:  lui_test();
+                10: sll_test();
+                11: srl_test();
+                12: bne_test();
+                13: blt_test();
+                14: fibonacci_test();
+                15: fibonacci_overflow_test();
+                default: integration_test();
             endcase
 
             // Summary banner for PASS

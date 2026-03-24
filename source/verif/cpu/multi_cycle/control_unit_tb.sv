@@ -23,7 +23,7 @@ module control_unit_tb();
     wire halt;
 
     task automatic check_eq_1;
-        input [255:0] sig_name;
+        input string sig_name;
         input logic actual;
         input logic expected;
         begin
@@ -35,7 +35,7 @@ module control_unit_tb();
     endtask
 
     task automatic check_eq_2;
-        input [255:0] sig_name;
+        input string sig_name;
         input logic [1:0] actual;
         input logic [1:0] expected;
         begin
@@ -47,7 +47,7 @@ module control_unit_tb();
     endtask
 
     task automatic check_eq_3;
-        input [255:0] sig_name;
+        input string sig_name;
         input logic [2:0] actual;
         input logic [2:0] expected;
         begin
@@ -87,7 +87,7 @@ module control_unit_tb();
     endtask
 
     task print_section;
-        input [255:0] title;
+        input string title;
         begin
             $display("---------------------------------------------------------------------------------------------------------------------------------");
             $display("\t\t\t\t%0s", title);
@@ -95,7 +95,7 @@ module control_unit_tb();
     endtask
 
     task print_case;
-        input [255:0] title;
+        input string title;
         begin
             $display("\t\t\t%0s", title);
         end
