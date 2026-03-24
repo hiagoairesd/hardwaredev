@@ -20,12 +20,12 @@ module instr_mem_tb();
         input [INSTR_W-1:0] exp_instr;
         if(instr_out_tb !== exp_instr) begin
             $display("\nTEST FAILED");
-            $display("At time \n%0d addr_in = %b instr_out = %h", $time, addr_in_tb, instr_out_tb);
+            $display("At time %0d\naddr_in = %b instr_out = %h", $time, addr_in_tb, instr_out_tb);
             $display("'instr_out' should be: %h\n", exp_instr);
             $finish;
         end
         else begin
-            $display("At time \n%0d addr_in = %b instr_out = %h OK", $time, addr_in_tb, instr_out_tb);
+            $display("At time %0d\naddr_in = %b instr_out = %h OK", $time, addr_in_tb, instr_out_tb);
         end
     endtask
 
