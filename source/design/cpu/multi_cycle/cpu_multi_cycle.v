@@ -60,7 +60,9 @@ module cpu_multi_cycle #(
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite;
 
-    control_unit control_unit (
+    control_unit #(
+        .INSTR_W(DATA_W)
+    ) control_unit (
         .clk            (clk),
         .rst            (rst),
         .instr          (instr),

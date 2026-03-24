@@ -1,9 +1,9 @@
 module control_unit #(
-    parameter DATA_W      = 32
+    parameter INSTR_W      = 32
 ) (
     input wire              clk,
     input wire              rst,
-    input wire [DATA_W-1:0] instr,           // full instruction word (for opcode and funct fields)
+    input wire [INSTR_W-1:0] instr,           // full instruction word (for opcode and funct fields)
     input wire              aluOut_is_zero,  // ALU zero flag
     input wire              signed_less,     // ALU signed less flag
 
@@ -50,7 +50,7 @@ module control_unit #(
 //==================================================================================
 // 3) Internal signals for instruction decoding and control logic
 //==================================================================================
-    wire [5:0] opcode = instr[DATA_W-1:26];
+    wire [5:0] opcode = instr[INSTR_W-1:INSTR_W-6];
     wire [5:0] funct  = instr[5:0];
     reg  [1:0] aluOp;                   // ALU operation code for ALU control logic
     reg        branch;

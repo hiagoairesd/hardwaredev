@@ -1,5 +1,7 @@
-module control_unit (
-    input wire  [31:0]instr,            // Current instruction
+module control_unit #(
+    parameter INSTR_W = 32
+)(
+    input wire  [INSTR_W-1:0] instr,            // Current instruction
     input wire        aluOut_is_zero,   // ALU output zero flag for branch decisions
     input wire        signed_less,      // ALU output signed less-than flag for BLT instruction
     output wire [2:0] aluControl,       // ALU control signal
@@ -28,7 +30,7 @@ module control_unit (
     //==================================================================================
     // 2) Word Control signal generation based on instruction opcode and funct fields
     //==================================================================================
-    wire [5:0] opcode = instr[31:26];   // opcode field from instruction
+    wire [5:0] opcode = instr[INSTR_W-1:INSTR_W-6];   // opcode field from instruction
     wire [5:0] funct  = instr[5:0];     // funct field for R-type instructions (ignored for non-R-type)
     reg  [8:0] word;
 
