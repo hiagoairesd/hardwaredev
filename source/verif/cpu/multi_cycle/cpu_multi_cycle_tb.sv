@@ -191,23 +191,23 @@ module cpu_multi_cycle_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/assembly/memoryTest.hex",         DUT.memory.mem);
-                2:  $readmemh("../source/verif/assembly/memorySegmentation.hex", DUT.memory.mem);
-                //3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.memory.mem);
-                //4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.memory.mem);
-                //5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.memory.mem);
-                //6:  $readmemh("../source/verif/assembly/beq.hex",                DUT.memory.mem);
-                //7:  $readmemh("../source/verif/assembly/andi.hex",               DUT.memory.mem);
-                //8:  $readmemh("../source/verif/assembly/ori.hex",                DUT.memory.mem);
-                //9:  $readmemh("../source/verif/assembly/lui.hex",                DUT.memory.mem);
-                //10: $readmemh("../source/verif/assembly/sll.hex",                DUT.memory.mem);
-                //11: $readmemh("../source/verif/assembly/srl.hex",                DUT.memory.mem);
-                //12: $readmemh("../source/verif/assembly/bne.hex",                DUT.memory.mem);
-                //13: $readmemh("../source/verif/assembly/blt.hex",                DUT.memory.mem);
-                //14: $readmemh("../source/verif/assembly/fibonacci.hex",          DUT.memory.mem);
-                //15: $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.memory.mem);
+                1:  $readmemh("../source/verif/cpu/assembly/memoryTest.hex",         DUT.memory.mem);
+                2:  $readmemh("../source/verif/cpu/assembly/memorySegmentation.hex", DUT.memory.mem);
+                3:  $readmemh("../source/verif/cpu/assembly/border_swlw.hex",        DUT.memory.mem);
+                //4:  $readmemh("../source/verif/cpu/assembly/rtype.hex",              DUT.memory.mem);
+                //5:  $readmemh("../source/verif/cpu/assembly/jump.hex",               DUT.memory.mem);
+                //6:  $readmemh("../source/verif/cpu/assembly/beq.hex",                DUT.memory.mem);
+                //7:  $readmemh("../source/verif/cpu/assembly/andi.hex",               DUT.memory.mem);
+                //8:  $readmemh("../source/verif/cpu/assembly/ori.hex",                DUT.memory.mem);
+                //9:  $readmemh("../source/verif/cpu/assembly/lui.hex",                DUT.memory.mem);
+                //10: $readmemh("../source/verif/cpu/assembly/sll.hex",                DUT.memory.mem);
+                //11: $readmemh("../source/verif/cpu/assembly/srl.hex",                DUT.memory.mem);
+                //12: $readmemh("../source/verif/cpu/assembly/bne.hex",                DUT.memory.mem);
+                //13: $readmemh("../source/verif/cpu/assembly/blt.hex",                DUT.memory.mem);
+                //14: $readmemh("../source/verif/cpu/assembly/fibonacci.hex",          DUT.memory.mem);
+                //15: $readmemh("../source/verif/cpu/assembly/fibonacci_overflow.hex", DUT.memory.mem);
                 //default:
-                //    $readmemh("../source/verif/assembly/integration.hex",        DUT.memory.mem);
+                //    $readmemh("../source/verif/cpu/assembly/integration.hex",        DUT.memory.mem);
             endcase
         end
     endtask
@@ -747,7 +747,7 @@ module cpu_multi_cycle_tb();
             case (id)
                 1:  reg_tests();
                 2:  memorySegmentation_tests();
-                //3:  border_swlw_test();
+                3:  border_swlw_test();
                 //4:  rtype_test_test();
                 //5:  jump_test();
                 //6:  beq_test();

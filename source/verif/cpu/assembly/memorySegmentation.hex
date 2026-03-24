@@ -11,10 +11,3 @@ ae080000     // [12] sw  $t0, 0($s0)    (Salva 43 de volta no endereço 128)
 ae080001     // [16] sw  $t0, 1($s0)    (Salva 43 no endereço 129)
 08000006     // [20] j   6              (Pulo incondicional para o Halt)
 fc000000     // [24] halt               (Finaliza a execução)
-
-
-
-
-
-2- $s0 <- 128
-3- 

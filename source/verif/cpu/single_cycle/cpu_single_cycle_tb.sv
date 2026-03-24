@@ -188,23 +188,23 @@ module single_cycle_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/assembly/regs.hex",               DUT.instr_mem.mem);
-                2:  $readmemh("../source/verif/assembly/basic_swlw.hex",         DUT.instr_mem.mem);
-                3:  $readmemh("../source/verif/assembly/border_swlw.hex",        DUT.instr_mem.mem);
-                4:  $readmemh("../source/verif/assembly/rtype.hex",              DUT.instr_mem.mem);
-                5:  $readmemh("../source/verif/assembly/jump.hex",               DUT.instr_mem.mem);
-                6:  $readmemh("../source/verif/assembly/beq.hex",                DUT.instr_mem.mem);
-                7:  $readmemh("../source/verif/assembly/andi.hex",               DUT.instr_mem.mem);
-                8:  $readmemh("../source/verif/assembly/ori.hex",                DUT.instr_mem.mem);
-                9:  $readmemh("../source/verif/assembly/lui.hex",                DUT.instr_mem.mem);
-                10: $readmemh("../source/verif/assembly/sll.hex",                DUT.instr_mem.mem);
-                11: $readmemh("../source/verif/assembly/srl.hex",                DUT.instr_mem.mem);
-                12: $readmemh("../source/verif/assembly/bne.hex",                DUT.instr_mem.mem);
-                13: $readmemh("../source/verif/assembly/blt.hex",                DUT.instr_mem.mem);
-                14: $readmemh("../source/verif/assembly/fibonacci.hex",          DUT.instr_mem.mem);
-                15: $readmemh("../source/verif/assembly/fibonacci_overflow.hex", DUT.instr_mem.mem);
+                1:  $readmemh("../source/verif/cpu/assembly/regs.hex",               DUT.instr_mem.mem);
+                2:  $readmemh("../source/verif/cpu/assembly/basic_swlw.hex",         DUT.instr_mem.mem);
+                3:  $readmemh("../source/verif/cpu/assembly/border_swlw.hex",        DUT.instr_mem.mem);
+                4:  $readmemh("../source/verif/cpu/assembly/rtype.hex",              DUT.instr_mem.mem);
+                5:  $readmemh("../source/verif/cpu/assembly/jump.hex",               DUT.instr_mem.mem);
+                6:  $readmemh("../source/verif/cpu/assembly/beq.hex",                DUT.instr_mem.mem);
+                7:  $readmemh("../source/verif/cpu/assembly/andi.hex",               DUT.instr_mem.mem);
+                8:  $readmemh("../source/verif/cpu/assembly/ori.hex",                DUT.instr_mem.mem);
+                9:  $readmemh("../source/verif/cpu/assembly/lui.hex",                DUT.instr_mem.mem);
+                10: $readmemh("../source/verif/cpu/assembly/sll.hex",                DUT.instr_mem.mem);
+                11: $readmemh("../source/verif/cpu/assembly/srl.hex",                DUT.instr_mem.mem);
+                12: $readmemh("../source/verif/cpu/assembly/bne.hex",                DUT.instr_mem.mem);
+                13: $readmemh("../source/verif/cpu/assembly/blt.hex",                DUT.instr_mem.mem);
+                14: $readmemh("../source/verif/cpu/assembly/fibonacci.hex",          DUT.instr_mem.mem);
+                15: $readmemh("../source/verif/cpu/assembly/fibonacci_overflow.hex", DUT.instr_mem.mem);
                 default:
-                    $readmemh("../source/verif/assembly/integration.hex",        DUT.instr_mem.mem);
+                    $readmemh("../source/verif/cpu/assembly/integration.hex",        DUT.instr_mem.mem);
             endcase
         end
     endtask

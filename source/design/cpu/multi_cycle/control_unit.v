@@ -270,10 +270,10 @@ module control_unit #(
 // 7) ALU control logic: combinational logic to generate ALU control signals based on opcode and funct fields
 //==============================================================================
     always @* begin
-        case(aluOp)
+        casez(aluOp)
             2'b00: aluControl = 3'b010; // add (for lw/sw address calculation and addi)
             2'b01: aluControl = 3'b110; // sub (for beq)
-            2'b1x: begin
+            2'b1?: begin
                 case(funct)
                     6'b100000: aluControl = 3'b010; // ADD
                     6'b100010: aluControl = 3'b110; // SUB

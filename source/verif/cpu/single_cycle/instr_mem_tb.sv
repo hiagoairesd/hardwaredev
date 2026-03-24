@@ -30,7 +30,7 @@ module instr_mem_tb();
     endtask
 
     initial begin
-        $readmemh("../source/verif/assembly/basic_swlw.hex", DUT.mem); 
+        $readmemh("../source/verif/cpu/assembly/basic_swlw.hex", DUT.mem); 
     end
 
     initial begin
