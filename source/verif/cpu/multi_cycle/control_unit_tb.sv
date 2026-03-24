@@ -104,18 +104,8 @@ module control_unit_tb();
     task print_ok;
         begin
             $display(
-                "At time %0t: OK | PCEn=%b | IRWrite=%b | memWrite=%b | regWrite=%b | aluControl=%b | PCSrc=%b | is_shift=%b | imm_is_zext=%b | halt=%b",
-                $time,
-                PCEn,
-                IRWrite,
-                memWrite,
-                regWrite,
-                aluControl,
-                PCSrc,
-                is_shift,
-                imm_is_zext,
-                halt
-            );
+                "At time %0t: PCEn=%b | IRWrite=%b | memWrite=%b | regWrite=%b | aluControl=%b | PCSrc=%b | is_shift=%b | imm_is_zext=%b | halt=%b | OK",
+                $time, PCEn, IRWrite, memWrite, regWrite, aluControl, PCSrc, is_shift, imm_is_zext, halt);
         end
     endtask
 
@@ -168,6 +158,174 @@ module control_unit_tb();
         $dumpvars(0, control_unit_tb);
     end
 
+    // -----------------------------------------------------------------------
+    // Shared helper: checks DECODE state (common to all instructions)
+    // -----------------------------------------------------------------------
+    task expect_decode;
+        begin
+            check_eq_1("aluSrcA", aluSrcA, 1'b0);
+            check_eq_2("aluSrcB", aluSrcB, 2'b11);
+        end
+    endtask
+
+    // -----------------------------------------------------------------------
+    // Per-instruction test tasks
+    // -----------------------------------------------------------------------
+    task test_lw;
+        begin
+            print_case("LW (load)");
+            instr = enc_i(OP_LW);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // MEM_ADR
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b10);
+            check_eq_3("aluControl",aluControl, 3'b010);
+            step;                                                           // MEM_READ
+            check_eq_1("IorD",      IorD,      1'b1);
+            check_eq_1("memWrite",  memWrite,  1'b0);
+            step;                                                           // MEM_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_sw;
+        begin
+            print_case("SW (store)");
+            instr = enc_i(OP_SW);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // MEM_ADR
+            check_eq_1("aluSrcA",  aluSrcA,  1'b1);
+            check_eq_2("aluSrcB",  aluSrcB,  2'b10);
+            step;                                                           // MEM_WRITE
+            check_eq_1("IorD",     IorD,     1'b1);
+            check_eq_1("memWrite", memWrite, 1'b1);
+            check_eq_1("regWrite", regWrite, 1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_add;
+        begin
+            print_case("ADD (no shift)");
+            instr = enc_r(FNCT_ADD);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b00);
+            check_eq_3("aluControl",aluControl, 3'b010);
+            check_eq_1("is_shift",  is_shift,  1'b0);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_sll;
+        begin
+            print_case("SLL (is_shift=1)");
+            instr = enc_r(FNCT_SLL);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("is_shift",  is_shift,  1'b1);
+            check_eq_3("aluControl",aluControl, 3'b011);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_ori;
+        begin
+            print_case("ORI (imm_is_zext=1)");
+            instr = enc_i(OP_ORI);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE_IMM
+            check_eq_1("imm_is_zext",imm_is_zext, 1'b1);
+            check_eq_3("aluControl", aluControl,  3'b001);
+            step;                                                           // IMM_WRITEBACK
+            check_eq_1("regWrite",   regWrite,    1'b1);
+            check_eq_1("regDst",     regDst,      1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_beq_taken;
+        begin
+            print_case("BEQ - take branch when zero=1");
+            instr = enc_i(OP_BEQ);
+            step;                                                           // DECODE
+            aluOut_is_zero = 1'b1;
+            step;                                                           // BRANCH
+            check_eq_2("PCSrc",  PCSrc,  2'b01);
+            check_eq_1("PCWrite",PCWrite,1'b0);
+            check_eq_1("PCEn",   PCEn,   1'b1);
+            step; expect_fetch(); print_ok();                               // FETCH
+            aluOut_is_zero = 1'b0;
+        end
+    endtask
+
+    task test_beq_not_taken;
+        begin
+            print_case("BEQ - do not take branch when zero=0");
+            instr = enc_i(OP_BEQ);
+            step;                                                           // DECODE
+            aluOut_is_zero = 1'b0;
+            step;                                                           // BRANCH
+            check_eq_1("PCEn", PCEn, 1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_blt_taken;
+        begin
+            print_case("BLT - take branch when signed_less=1");
+            instr = enc_i(OP_BLT);
+            step;                                                           // DECODE
+            signed_less = 1'b1;
+            step;                                                           // BRANCH
+            check_eq_1("PCEn", PCEn, 1'b1);
+            step; expect_fetch(); print_ok();                               // FETCH
+            signed_less = 1'b0;
+        end
+    endtask
+
+    task test_jump;
+        begin
+            print_case("J (jump)");
+            instr = enc_j(OP_JUMP);
+            step;                                                           // DECODE
+            step;                                                           // JUMP
+            check_eq_2("PCSrc",  PCSrc,  2'b10);
+            check_eq_1("PCWrite",PCWrite,1'b1);
+            check_eq_1("PCEn",   PCEn,   1'b1);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_halt;
+        begin
+            print_case("HALT (halt=1)");
+            instr = {OP_HALT, 26'd0};
+            step;                                                           // DECODE
+            step;                                                           // HALT
+            check_eq_1("halt",     halt,    1'b1);
+            check_eq_1("regWrite", regWrite,1'b0);
+            check_eq_1("memWrite", memWrite,1'b0);
+            check_eq_1("PCWrite",  PCWrite, 1'b0);
+            step;                                                           // HALT (stays)
+            check_eq_1("halt", halt, 1'b1);
+            print_ok();
+        end
+    endtask
+
+    // -----------------------------------------------------------------------
+    // Main test sequence
+    // -----------------------------------------------------------------------
     initial begin
         rst            = 1'b1;
         instr          = 32'd0;
@@ -176,157 +334,32 @@ module control_unit_tb();
 
         print_section("RESET/FETCH");
         print_case("Reset -> FETCH");
-        step;
-        expect_fetch();
-        print_ok();
+        step; expect_fetch(); print_ok();
         rst = 1'b0;
 
         print_section("LOAD/STORE OPERATIONS");
-        print_case("LW (load)");
-        instr = enc_i(OP_LW);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b0);
-        check_eq_2("aluSrcB", aluSrcB, 2'b11);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b1);
-        check_eq_2("aluSrcB", aluSrcB, 2'b10);
-        check_eq_3("aluControl", aluControl, 3'b010);
-        step;
-        check_eq_1("IorD", IorD, 1'b1);
-        check_eq_1("memWrite", memWrite, 1'b0);
-        step;
-        check_eq_1("regWrite", regWrite, 1'b1);
-        check_eq_1("memToReg", memToReg, 1'b1);
-        check_eq_1("regDst", regDst, 1'b0);
-        step;
-        expect_fetch();
-        print_ok();
-
-        print_case("SW (store)");
-        instr = enc_i(OP_SW);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b0);
-        check_eq_2("aluSrcB", aluSrcB, 2'b11);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b1);
-        check_eq_2("aluSrcB", aluSrcB, 2'b10);
-        step;
-        check_eq_1("IorD", IorD, 1'b1);
-        check_eq_1("memWrite", memWrite, 1'b1);
-        check_eq_1("regWrite", regWrite, 1'b0);
-        step;
-        expect_fetch();
-        print_ok();
+        test_lw();
+        test_sw();
 
         print_section("R-TYPE OPERATIONS");
-        print_case("ADD (no shift)");
-        instr = enc_r(FNCT_ADD);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b0);
-        check_eq_2("aluSrcB", aluSrcB, 2'b11);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b1);
-        check_eq_2("aluSrcB", aluSrcB, 2'b00);
-        check_eq_3("aluControl", aluControl, 3'b010);
-        check_eq_1("is_shift", is_shift, 1'b0);
-        step;
-        check_eq_1("regWrite", regWrite, 1'b1);
-        check_eq_1("regDst", regDst, 1'b1);
-        check_eq_1("memToReg", memToReg, 1'b0);
-        step;
-        expect_fetch();
-        print_ok();
+        test_add();
 
         print_section("SHIFT INSTRUCTIONS");
-        print_case("SLL (is_shift=1)");
-        instr = enc_r(FNCT_SLL);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b0);
-        check_eq_2("aluSrcB", aluSrcB, 2'b11);
-        step;
-        check_eq_1("is_shift", is_shift, 1'b1);
-        check_eq_3("aluControl", aluControl, 3'b011);
-        step;
-        check_eq_1("regWrite", regWrite, 1'b1);
-        step;
-        expect_fetch();
-        print_ok();
+        test_sll();
 
         print_section("IMMEDIATE OPERATIONS");
-        print_case("ORI (imm_is_zext=1)");
-        instr = enc_i(OP_ORI);
-        step;
-        check_eq_1("aluSrcA", aluSrcA, 1'b0);
-        check_eq_2("aluSrcB", aluSrcB, 2'b11);
-        step;
-        check_eq_1("imm_is_zext", imm_is_zext, 1'b1);
-        check_eq_3("aluControl", aluControl, 3'b001);
-        step;
-        check_eq_1("regWrite", regWrite, 1'b1);
-        check_eq_1("regDst", regDst, 1'b0);
-        step;
-        expect_fetch();
-        print_ok();
+        test_ori();
 
         print_section("BRANCH INSTRUCTIONS");
-        print_case("BEQ - take branch when zero=1");
-        instr = enc_i(OP_BEQ);
-        step;
-        aluOut_is_zero = 1'b1;
-        step;
-        check_eq_2("PCSrc", PCSrc, 2'b01);
-        check_eq_1("PCWrite", PCWrite, 1'b0);
-        check_eq_1("PCEn", PCEn, 1'b1);
-        step;
-        expect_fetch();
-        print_ok();
-        aluOut_is_zero = 1'b0;
-
-        print_case("BEQ - do not take branch when zero=0");
-        instr = enc_i(OP_BEQ);
-        step;
-        aluOut_is_zero = 1'b0;
-        step;
-        check_eq_1("PCEn", PCEn, 1'b0);
-        step;
-        expect_fetch();
-        print_ok();
-
-        print_case("BLT - take branch when signed_less=1");
-        instr = enc_i(OP_BLT);
-        step;
-        signed_less = 1'b1;
-        step;
-        check_eq_1("PCEn", PCEn, 1'b1);
-        step;
-        expect_fetch();
-        print_ok();
-        signed_less = 1'b0;
+        test_beq_taken();
+        test_beq_not_taken();
+        test_blt_taken();
 
         print_section("JUMP INSTRUCTION");
-        print_case("J (jump)");
-        instr = enc_j(OP_JUMP);
-        step;
-        step;
-        check_eq_2("PCSrc", PCSrc, 2'b10);
-        check_eq_1("PCWrite", PCWrite, 1'b1);
-        check_eq_1("PCEn", PCEn, 1'b1);
-        step;
-        expect_fetch();
-        print_ok();
+        test_jump();
 
         print_section("HALT INSTRUCTION");
-        print_case("HALT (halt=1)");
-        instr = {OP_HALT, 26'd0};
-        step;
-        step;
-        check_eq_1("halt", halt, 1'b1);
-        check_eq_1("regWrite", regWrite, 1'b0);
-        check_eq_1("memWrite", memWrite, 1'b0);
-        check_eq_1("PCWrite", PCWrite, 1'b0);
-        step;
-        check_eq_1("halt", halt, 1'b1);
-        print_ok();
+        test_halt();
 
         $display("\n\t\t\t\tALL TESTS PASSED");
         $finish;
