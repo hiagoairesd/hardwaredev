@@ -11,28 +11,72 @@ CPU_DESIGN="$DESIGN/cpu"
 VERIF="$ROOT/verif"
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <dut> [vvp_args...]" >&2
+  echo "Usage: $0 <dut> [single_cycle|multi_cycle] [vvp_args...]" >&2
+  echo "Aliases: <dut>_mc, <dut>_sc, <dut>_multi_cycle, <dut>_single_cycle" >&2
   exit 1
 fi
 dut="$1"
 shift
 
+alias_variant=""
+if [[ "$dut" =~ ^(.+)_mc$ ]]; then
+  dut="${BASH_REMATCH[1]}"
+  alias_variant="multi_cycle"
+elif [[ "$dut" =~ ^(.+)_sc$ ]]; then
+  dut="${BASH_REMATCH[1]}"
+  alias_variant="single_cycle"
+elif [[ "$dut" =~ ^(.+)_multi_cycle$ ]]; then
+  dut="${BASH_REMATCH[1]}"
+  alias_variant="multi_cycle"
+elif [[ "$dut" =~ ^(.+)_single_cycle$ ]]; then
+  dut="${BASH_REMATCH[1]}"
+  alias_variant="single_cycle"
+fi
+
+variant="$alias_variant"
+if [[ $# -gt 0 && ( "$1" == "single_cycle" || "$1" == "multi_cycle" ) ]]; then
+  variant="$1"
+  shift
+fi
+
 out="${dut}.out"
-tb="$(find "$VERIF" -type f -name "${dut}_tb.sv" -print -quit)"
+if [[ -n "$variant" ]]; then
+  tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_tb.sv" -print -quit)"
+  if [[ -z "$tb" ]]; then
+    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_${variant}_tb.sv" -print -quit)"
+  fi
+else
+  tb="$(find "$VERIF" -type f -name "${dut}_tb.sv" -print -quit)"
+fi
 
 echo "###############################################################"
 echo "DUT : $dut"
 echo "TB  : $tb"
 
-rtl="$(find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
+if [[ -n "$variant" ]]; then
+  rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
+  if [[ -z "$rtl" ]]; then
+    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}_${variant}.v" -o -name "${dut}_${variant}.sv" \) -print -quit)"
+  fi
+else
+  rtl="$(find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
+fi
 
 if [[ -z "$rtl" ]]; then
-  echo "ERROR: RTL not found for DUT '$dut' under: $DESIGN" >&2
+  if [[ -n "$variant" ]]; then
+    echo "ERROR: RTL not found for DUT '$dut' under variant '$variant' in: $DESIGN" >&2
+  else
+    echo "ERROR: RTL not found for DUT '$dut' under: $DESIGN" >&2
+  fi
   exit 1
 fi
 
 if [[ -z "$tb" || ! -f "$tb" ]]; then
-  echo "ERROR: Testbench not found: $tb" >&2
+  if [[ -n "$variant" ]]; then
+    echo "ERROR: Testbench not found for DUT '$dut' under variant '$variant' in: $VERIF" >&2
+  else
+    echo "ERROR: Testbench not found: $tb" >&2
+  fi
   exit 1
 fi
 

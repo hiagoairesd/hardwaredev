@@ -22,11 +22,41 @@ module control_unit_tb();
     wire [2:0] aluControl;
     wire halt;
 
-`define CHECK_EQ(sig, exp) \
-    if ((sig) !== (exp)) begin \
-        $display("[FAIL] t=%0t %s=%b expected=%b", $time, `"sig`", (sig), (exp)); \
-        $finish; \
-    end
+    task automatic check_eq_1;
+        input [255:0] sig_name;
+        input logic actual;
+        input logic expected;
+        begin
+            if (actual !== expected) begin
+                $display("[FAIL] t=%0t %0s got=%b expected=%b", $time, sig_name, actual, expected);
+                $finish;
+            end
+        end
+    endtask
+
+    task automatic check_eq_2;
+        input [255:0] sig_name;
+        input logic [1:0] actual;
+        input logic [1:0] expected;
+        begin
+            if (actual !== expected) begin
+                $display("[FAIL] t=%0t %0s got=%b expected=%b", $time, sig_name, actual, expected);
+                $finish;
+            end
+        end
+    endtask
+
+    task automatic check_eq_3;
+        input [255:0] sig_name;
+        input logic [2:0] actual;
+        input logic [2:0] expected;
+        begin
+            if (actual !== expected) begin
+                $display("[FAIL] t=%0t %0s got=%b expected=%b", $time, sig_name, actual, expected);
+                $finish;
+            end
+        end
+    endtask
 
     function [31:0] enc_r;
         input [5:0] funct;
@@ -56,17 +86,50 @@ module control_unit_tb();
         end
     endtask
 
+    task print_section;
+        input [255:0] title;
+        begin
+            $display("---------------------------------------------------------------------------------------------------------------------------------");
+            $display("\t\t\t\t%0s", title);
+        end
+    endtask
+
+    task print_case;
+        input [255:0] title;
+        begin
+            $display("\t\t\t%0s", title);
+        end
+    endtask
+
+    task print_ok;
+        begin
+            $display(
+                "At time %0t: OK | PCEn=%b | IRWrite=%b | memWrite=%b | regWrite=%b | aluControl=%b | PCSrc=%b | is_shift=%b | imm_is_zext=%b | halt=%b",
+                $time,
+                PCEn,
+                IRWrite,
+                memWrite,
+                regWrite,
+                aluControl,
+                PCSrc,
+                is_shift,
+                imm_is_zext,
+                halt
+            );
+        end
+    endtask
+
     task expect_fetch;
         begin
-            `CHECK_EQ(IRWrite, 1'b1);
-            `CHECK_EQ(PCWrite, 1'b1);
-            `CHECK_EQ(PCSrc, 2'b00);
-            `CHECK_EQ(aluSrcA, 1'b0);
-            `CHECK_EQ(aluSrcB, 2'b01);
-            `CHECK_EQ(PCEn, 1'b1);
-            `CHECK_EQ(memWrite, 1'b0);
-            `CHECK_EQ(regWrite, 1'b0);
-            `CHECK_EQ(halt, 1'b0);
+            check_eq_1("IRWrite", IRWrite, 1'b1);
+            check_eq_1("PCWrite", PCWrite, 1'b1);
+            check_eq_2("PCSrc", PCSrc, 2'b00);
+            check_eq_1("aluSrcA", aluSrcA, 1'b0);
+            check_eq_2("aluSrcB", aluSrcB, 2'b01);
+            check_eq_1("PCEn", PCEn, 1'b1);
+            check_eq_1("memWrite", memWrite, 1'b0);
+            check_eq_1("regWrite", regWrite, 1'b0);
+            check_eq_1("halt", halt, 1'b0);
         end
     endtask
 
@@ -111,137 +174,167 @@ module control_unit_tb();
         aluOut_is_zero = 1'b0;
         signed_less    = 1'b0;
 
+        print_section("RESET/FETCH");
+        print_case("Reset -> FETCH");
         step;
         expect_fetch();
+        print_ok();
         rst = 1'b0;
 
+        print_section("LOAD/STORE OPERATIONS");
+        print_case("LW (load)");
         instr = enc_i(OP_LW);
         step;
-        `CHECK_EQ(aluSrcA, 1'b0);
-        `CHECK_EQ(aluSrcB, 2'b11);
+        check_eq_1("aluSrcA", aluSrcA, 1'b0);
+        check_eq_2("aluSrcB", aluSrcB, 2'b11);
         step;
-        `CHECK_EQ(aluSrcA, 1'b1);
-        `CHECK_EQ(aluSrcB, 2'b10);
-        `CHECK_EQ(aluControl, 3'b010);
+        check_eq_1("aluSrcA", aluSrcA, 1'b1);
+        check_eq_2("aluSrcB", aluSrcB, 2'b10);
+        check_eq_3("aluControl", aluControl, 3'b010);
         step;
-        `CHECK_EQ(IorD, 1'b1);
-        `CHECK_EQ(memWrite, 1'b0);
+        check_eq_1("IorD", IorD, 1'b1);
+        check_eq_1("memWrite", memWrite, 1'b0);
         step;
-        `CHECK_EQ(regWrite, 1'b1);
-        `CHECK_EQ(memToReg, 1'b1);
-        `CHECK_EQ(regDst, 1'b0);
+        check_eq_1("regWrite", regWrite, 1'b1);
+        check_eq_1("memToReg", memToReg, 1'b1);
+        check_eq_1("regDst", regDst, 1'b0);
         step;
         expect_fetch();
+        print_ok();
 
+        print_case("SW (store)");
         instr = enc_i(OP_SW);
         step;
-        `CHECK_EQ(aluSrcA, 1'b0);
-        `CHECK_EQ(aluSrcB, 2'b11);
+        check_eq_1("aluSrcA", aluSrcA, 1'b0);
+        check_eq_2("aluSrcB", aluSrcB, 2'b11);
         step;
-        `CHECK_EQ(aluSrcA, 1'b1);
-        `CHECK_EQ(aluSrcB, 2'b10);
+        check_eq_1("aluSrcA", aluSrcA, 1'b1);
+        check_eq_2("aluSrcB", aluSrcB, 2'b10);
         step;
-        `CHECK_EQ(IorD, 1'b1);
-        `CHECK_EQ(memWrite, 1'b1);
-        `CHECK_EQ(regWrite, 1'b0);
+        check_eq_1("IorD", IorD, 1'b1);
+        check_eq_1("memWrite", memWrite, 1'b1);
+        check_eq_1("regWrite", regWrite, 1'b0);
         step;
         expect_fetch();
+        print_ok();
 
+        print_section("R-TYPE OPERATIONS");
+        print_case("ADD (no shift)");
         instr = enc_r(FNCT_ADD);
         step;
-        `CHECK_EQ(aluSrcA, 1'b0);
-        `CHECK_EQ(aluSrcB, 2'b11);
+        check_eq_1("aluSrcA", aluSrcA, 1'b0);
+        check_eq_2("aluSrcB", aluSrcB, 2'b11);
         step;
-        `CHECK_EQ(aluSrcA, 1'b1);
-        `CHECK_EQ(aluSrcB, 2'b00);
-        `CHECK_EQ(aluControl, 3'b010);
-        `CHECK_EQ(is_shift, 1'b0);
+        check_eq_1("aluSrcA", aluSrcA, 1'b1);
+        check_eq_2("aluSrcB", aluSrcB, 2'b00);
+        check_eq_3("aluControl", aluControl, 3'b010);
+        check_eq_1("is_shift", is_shift, 1'b0);
         step;
-        `CHECK_EQ(regWrite, 1'b1);
-        `CHECK_EQ(regDst, 1'b1);
-        `CHECK_EQ(memToReg, 1'b0);
+        check_eq_1("regWrite", regWrite, 1'b1);
+        check_eq_1("regDst", regDst, 1'b1);
+        check_eq_1("memToReg", memToReg, 1'b0);
         step;
         expect_fetch();
+        print_ok();
 
+        print_section("SHIFT INSTRUCTIONS");
+        print_case("SLL (is_shift=1)");
         instr = enc_r(FNCT_SLL);
         step;
-        `CHECK_EQ(aluSrcA, 1'b0);
-        `CHECK_EQ(aluSrcB, 2'b11);
+        check_eq_1("aluSrcA", aluSrcA, 1'b0);
+        check_eq_2("aluSrcB", aluSrcB, 2'b11);
         step;
-        `CHECK_EQ(is_shift, 1'b1);
-        `CHECK_EQ(aluControl, 3'b011);
+        check_eq_1("is_shift", is_shift, 1'b1);
+        check_eq_3("aluControl", aluControl, 3'b011);
         step;
-        `CHECK_EQ(regWrite, 1'b1);
+        check_eq_1("regWrite", regWrite, 1'b1);
         step;
         expect_fetch();
+        print_ok();
 
+        print_section("IMMEDIATE OPERATIONS");
+        print_case("ORI (imm_is_zext=1)");
         instr = enc_i(OP_ORI);
         step;
-        `CHECK_EQ(aluSrcA, 1'b0);
-        `CHECK_EQ(aluSrcB, 2'b11);
+        check_eq_1("aluSrcA", aluSrcA, 1'b0);
+        check_eq_2("aluSrcB", aluSrcB, 2'b11);
         step;
-        `CHECK_EQ(imm_is_zext, 1'b1);
-        `CHECK_EQ(aluControl, 3'b001);
+        check_eq_1("imm_is_zext", imm_is_zext, 1'b1);
+        check_eq_3("aluControl", aluControl, 3'b001);
         step;
-        `CHECK_EQ(regWrite, 1'b1);
-        `CHECK_EQ(regDst, 1'b0);
+        check_eq_1("regWrite", regWrite, 1'b1);
+        check_eq_1("regDst", regDst, 1'b0);
         step;
         expect_fetch();
+        print_ok();
 
+        print_section("BRANCH INSTRUCTIONS");
+        print_case("BEQ - take branch when zero=1");
         instr = enc_i(OP_BEQ);
         step;
         aluOut_is_zero = 1'b1;
         step;
-        `CHECK_EQ(PCSrc, 2'b01);
-        `CHECK_EQ(PCWrite, 1'b0);
-        `CHECK_EQ(PCEn, 1'b1);
+        check_eq_2("PCSrc", PCSrc, 2'b01);
+        check_eq_1("PCWrite", PCWrite, 1'b0);
+        check_eq_1("PCEn", PCEn, 1'b1);
         step;
         expect_fetch();
+        print_ok();
         aluOut_is_zero = 1'b0;
 
+        print_case("BEQ - do not take branch when zero=0");
         instr = enc_i(OP_BEQ);
         step;
         aluOut_is_zero = 1'b0;
         step;
-        `CHECK_EQ(PCEn, 1'b0);
+        check_eq_1("PCEn", PCEn, 1'b0);
         step;
         expect_fetch();
+        print_ok();
 
+        print_case("BLT - take branch when signed_less=1");
         instr = enc_i(OP_BLT);
         step;
         signed_less = 1'b1;
         step;
-        `CHECK_EQ(PCEn, 1'b1);
+        check_eq_1("PCEn", PCEn, 1'b1);
         step;
         expect_fetch();
+        print_ok();
         signed_less = 1'b0;
 
+        print_section("JUMP INSTRUCTION");
+        print_case("J (jump)");
         instr = enc_j(OP_JUMP);
         step;
         step;
-        `CHECK_EQ(PCSrc, 2'b10);
-        `CHECK_EQ(PCWrite, 1'b1);
-        `CHECK_EQ(PCEn, 1'b1);
+        check_eq_2("PCSrc", PCSrc, 2'b10);
+        check_eq_1("PCWrite", PCWrite, 1'b1);
+        check_eq_1("PCEn", PCEn, 1'b1);
         step;
         expect_fetch();
+        print_ok();
 
+        print_section("HALT INSTRUCTION");
+        print_case("HALT (halt=1)");
         instr = {OP_HALT, 26'd0};
         step;
         step;
-        `CHECK_EQ(halt, 1'b1);
-        `CHECK_EQ(regWrite, 1'b0);
-        `CHECK_EQ(memWrite, 1'b0);
-        `CHECK_EQ(PCWrite, 1'b0);
+        check_eq_1("halt", halt, 1'b1);
+        check_eq_1("regWrite", regWrite, 1'b0);
+        check_eq_1("memWrite", memWrite, 1'b0);
+        check_eq_1("PCWrite", PCWrite, 1'b0);
         step;
-        `CHECK_EQ(halt, 1'b1);
+        check_eq_1("halt", halt, 1'b1);
+        print_ok();
 
-        $display("[PASS] control_unit multi-cycle TB finalizado sem falhas");
+        $display("\n\t\t\t\tALL TESTS PASSED");
         $finish;
     end
 
     initial begin
         #2000;
-        $display("[FAIL] Timeout no testbench");
+        $display("[FAIL] Timeout: simulation did not finish in time");
         $finish;
     end
 
