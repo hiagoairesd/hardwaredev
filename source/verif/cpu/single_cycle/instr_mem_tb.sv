@@ -1,18 +1,18 @@
 module instr_mem_tb();
 
-    localparam ADDR_W = 8;
+    localparam ADDR_W  = 8;
     localparam INSTR_W = 32;
-    localparam DEPTH = 256;
+    localparam DEPTH   = 256;
 
-    reg  [ADDR_W-1:0] addr_in_tb;
+    reg  [ADDR_W-1:0]  addr_in_tb;
     wire [INSTR_W-1:0] instr_out_tb;
 
     instr_mem #(
-        .ADDR_W(ADDR_W),
+        .ADDR_W (ADDR_W),
         .INSTR_W(INSTR_W),
-        .DEPTH(DEPTH)
+        .DEPTH  (DEPTH)
     ) DUT (
-        .addr_in(addr_in_tb),
+        .addr_in  (addr_in_tb),
         .instr_out(instr_out_tb)
     );
 
@@ -30,7 +30,7 @@ module instr_mem_tb();
     endtask
 
     initial begin
-        $readmemh("../source/verif/cpu/assembly/basic_swlw.hex", DUT.mem); 
+        $readmemh("../source/verif/cpu/single_cycle/assembly/basic_swlw.hex", DUT.mem); 
     end
 
     initial begin
