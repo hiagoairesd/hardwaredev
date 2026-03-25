@@ -710,11 +710,11 @@ module cpu_sc_tb();
         begin
             // 1) Reset asserted
             rst = 1'b1;
-            $display("\033[1;34m-> Reset asserted @%0t\033[0m", $time);
+            $display({`ANSI_BOLD, `ANSI_BLU, "-> Reset asserted @%0t", `ANSI_RST}, $time);
 
             // 2) Load program while reset is asserted
             #1;
-            $display("\033[1;34m-> Loading program...\033[0m");
+            $display({`ANSI_BOLD, `ANSI_BLU, "-> Loading program...", `ANSI_RST});
             pick_test(id);
 
             // Keep reset asserted for a couple cycles (ensures DUT internal state clears)
@@ -722,13 +722,13 @@ module cpu_sc_tb();
 
             // 3) Reset deasserted
             rst = 1'b0;
-            $display("\033[1;34m-> Reset deasserted @%0t\033[0m", $time);
+            $display({`ANSI_BOLD, `ANSI_BLU, "-> Reset deasserted @%0t", `ANSI_RST}, $time);
 
             // 4) Run loop: stop at HALT or after max_cycles
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
                 if (DUT.halted == 1'b1) begin
-                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.pc);
+                    $display({`ANSI_BOLD, `ANSI_BLU, "-> HALT detected @%0t (PC=0x%08h)", `ANSI_RST}, $time, DUT.pc);
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
@@ -736,7 +736,7 @@ module cpu_sc_tb();
             // Enforce termination condition
             if (DUT.halted != 1'b1) begin
                 $fatal(1,
-                       "\033[1;31m\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t\033[0m",
+                       {`ANSI_BOLD, `ANSI_RED, "\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t", `ANSI_RST},
                        max_cycles, DUT.pc, $time);
             end
 
