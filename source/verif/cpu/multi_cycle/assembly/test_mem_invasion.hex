@@ -1,0 +1,6 @@
+// This program attempts to write to the instruction region (address 0)
+// The CPU should detect this as an illegal access and halt immediately.
+20100000    // [0] addi $s0, $zero, 0      (Prepare register $s0 with address 0)
+20080001    // [4] addi $t0, $zero, 1      (Prepare register $t0 with value 1)
+ae080000    // [8] sw   $t0, 0($s0)        (Attempt to write to address 0 in instruction region - SHOULD TRIGGER FATAL)
+fc000000    // [12] halt                   (Should never be reached)

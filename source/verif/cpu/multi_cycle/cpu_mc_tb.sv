@@ -206,6 +206,8 @@ module cpu_mc_tb();
                 // 13: $readmemh("../source/verif/cpu/multi_cycle/assembly/blt.hex",                DUT.memory.mem);
                 // 14: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci.hex",          DUT.memory.mem);
                 // 15: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci_overflow.hex", DUT.memory.mem);
+                100: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_mem_invasion.hex",   DUT.memory.mem);
+                102: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_instr_overflow.hex", DUT.memory.mem);
                 // default:
                     // $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
             endcase

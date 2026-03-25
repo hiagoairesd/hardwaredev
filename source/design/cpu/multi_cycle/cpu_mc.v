@@ -1,12 +1,18 @@
 module cpu_mc #(
     parameter DATA_W = 32,
-    parameter ADDR_W = 32
+    parameter ADDR_W = 32,
+    parameter MEM_DEPTH = 256
 )(
     input wire clk,
     input wire rst,
     output wire halt
 );
+    // ANSI Color Codes
+    `define ANSI_RED  "\033[31m"
+    `define ANSI_BOLD "\033[1m"
+    `define ANSI_RST  "\033[0m"
 
+    localparam INSTR_LIMIT = MEM_DEPTH / 2;
 //==============================================================================
 // 1) PC Logic
 //==============================================================================
@@ -17,7 +23,7 @@ module cpu_mc #(
     assign PCJump  = {pc[ADDR_W-1:ADDR_W-4], addr, 2'b00};    // Jump target address for J-type instructions
     assign pc_next = 
         (PCSrc == 2'b00) ? alu_out :   
-        (PCSrc == 2'b01) ? alu_reg : 
+        (PCSrc == 2'b01) ? alu_reg :
         (PCSrc == 2'b10) ? PCJump  : alu_out;
 //==============================================================================
 // 2) Memory
@@ -27,16 +33,54 @@ module cpu_mc #(
     wire [ADDR_W-1:0] mem_addr_word = {{2{1'b0}}, mem_addr[ADDR_W-1:2]}; // word-aligned address
     wire [DATA_W-1:0] mem_data_in = rf_regB;
 
+    // Enforce that the CPU does not write to the instruction memory region at runtime.
+    // Detect and terminate immediately (combinational), before any memory write can be committed.
+    wire              illegal_mem_write = !rst && memWrite && (mem_addr_word < INSTR_LIMIT);
+
     memory #(
         .ADDR_W(ADDR_W),
-        .DATA_W(DATA_W)
+        .DATA_W(DATA_W),
+        .DEPTH(MEM_DEPTH)
     ) memory (
         .clk        (clk),
-        .we         (memWrite),
+        .we         (memWrite && !illegal_mem_write),
         .addr       (mem_addr_word),
         .data_in    (mem_data_in),
         .data_out   (mem_out)
     );
+    // ---------------------------------------------------------
+    // 1. MEMORY INITIALIZATION CHECK (Startup)
+    // ---------------------------------------------------------
+    always @(negedge rst) begin
+        // Check that data region (INSTR_LIMIT..MEM_DEPTH-1) remains zero after program load.
+        // Any non-zero entry indicates instruction-file overflow into data memory.
+        for (integer i = INSTR_LIMIT; i < MEM_DEPTH; i = i + 1) begin
+            if (memory.mem[i] !== 32'h0) begin
+                $fatal(1, $sformatf(
+                    {`ANSI_BOLD, `ANSI_RED,
+                     "\n[CPU][MEMORY LOAD ERROR] HEX initialization overflow into data region. \n\t\tWord index=%0d | Instruction Limit=0..%0d.",
+                     `ANSI_RST},
+                    i, INSTR_LIMIT-1
+                ));
+            end
+        end
+    end
+
+    // ---------------------------------------------------------
+    // 2. MEMORY ACCESS VIOLATION CHECK (Runtime)
+    // ---------------------------------------------------------
+    // Enforce that the CPU does not write to the instruction memory region at runtime.
+    // Detect and terminate immediately (combinational), before any memory write can be committed.
+    always @(*) begin
+        if (illegal_mem_write) begin
+            $fatal(1, $sformatf(
+                {`ANSI_BOLD, `ANSI_RED,
+                 "\n[CPU][MEMORY ACCESS VIOLATION] Illegal write to instruction region. \n\tAddress = %0d | Data = 0x%0h | Data Limit = %0d..%0d.",
+                 `ANSI_RST},
+                mem_addr_word, mem_data_in, INSTR_LIMIT, MEM_DEPTH-1
+            ));
+        end
+    end
 //==============================================================================
 // 3) Instruction fields + immediate extension
 //==============================================================================
