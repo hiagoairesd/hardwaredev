@@ -1,7 +1,7 @@
 //==============================================================================
-// cpu_single_cycle.sv
+// cpu_sc.sv
 //
-// Module: cpu_single_cycle
+// Module: cpu_sc
 // Type  : MIPS-like single-cycle CPU top (PC-indexed instruction memory)
 //
 // PURPOSE
@@ -33,7 +33,7 @@
 //       wa3, rf_wdata, alu_out, is_zero, dm_data
 //==============================================================================
 
-module cpu_single_cycle #(
+module cpu_sc #(
     parameter int ADDR_W = 8,
     parameter int DATA_W = 32
 )(

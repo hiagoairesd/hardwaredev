@@ -9,8 +9,7 @@ module alu_tb();
     wire             is_zero_tb;
     wire             signed_less_tb;
 
-    alu
-    #(
+    alu #(
         .DATA_W(DATA_W)
     ) DUT (
         .aluControl (opcode_tb),

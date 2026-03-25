@@ -1,4 +1,4 @@
-module cpu_multi_cycle #(
+module cpu_mc #(
     parameter DATA_W = 32,
     parameter ADDR_W = 32
 )(

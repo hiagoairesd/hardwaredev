@@ -39,11 +39,29 @@ if [[ $# -gt 0 && ( "$1" == "single_cycle" || "$1" == "multi_cycle" ) ]]; then
   shift
 fi
 
-out="${dut}.out"
+variant_short=""
+if [[ "$variant" == "single_cycle" ]]; then
+  variant_short="sc"
+elif [[ "$variant" == "multi_cycle" ]]; then
+  variant_short="mc"
+fi
+
+if [[ -n "$variant" ]]; then
+  if [[ -n "$variant_short" ]]; then
+    out="${dut}_${variant_short}.out"
+  else
+    out="${dut}_${variant}.out"
+  fi
+else
+  out="${dut}.out"
+fi
 if [[ -n "$variant" ]]; then
   tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_tb.sv" -print -quit)"
   if [[ -z "$tb" ]]; then
     tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_${variant}_tb.sv" -print -quit)"
+  fi
+  if [[ -z "$tb" && -n "$variant_short" ]]; then
+    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_${variant_short}_tb.sv" -print -quit)"
   fi
 else
   tb="$(find "$VERIF" -type f -name "${dut}_tb.sv" -print -quit)"
@@ -57,6 +75,9 @@ if [[ -n "$variant" ]]; then
   rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
   if [[ -z "$rtl" ]]; then
     rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}_${variant}.v" -o -name "${dut}_${variant}.sv" \) -print -quit)"
+  fi
+  if [[ -z "$rtl" && -n "$variant_short" ]]; then
+    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}_${variant_short}.v" -o -name "${dut}_${variant_short}.sv" \) -print -quit)"
   fi
 else
   rtl="$(find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"

@@ -1,5 +1,5 @@
 module control_unit #(
-    parameter INSTR_W      = 32
+    parameter INSTR_W = 32
 ) (
     input wire              clk,
     input wire              rst,
