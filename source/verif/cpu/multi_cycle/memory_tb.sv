@@ -118,8 +118,6 @@ module memory_tb();
         end
     endtask
 
-
-
     initial begin
         check_instr_segment();
         check_data_segment();
@@ -128,5 +126,4 @@ module memory_tb();
         $display({`ANSI_BOLD, " -------"});
         $finish;
     end
-
 endmodule
