@@ -151,7 +151,7 @@ module cpu_mc #(
 // Writeback:
 //   - memtoReg=1 selects mem_reg (load)
 //   - memtoReg=0 selects alu_out
-    assign rf_wdata = (memtoReg)? mem_reg : alu_out;
+    assign rf_wdata = (memtoReg)? mem_reg : alu_reg;
 
 //==============================================================================
 // 6) ALU operand selection + ALU execution

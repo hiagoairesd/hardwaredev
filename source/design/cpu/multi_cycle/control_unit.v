@@ -108,7 +108,7 @@ module control_unit #(
 // 6) Output generation (3rd block): combinational logic to generate control signals based on current state
 //=================================================================================
     always @* begin
-        halt = 1'b0;
+        {memToReg, regDst, IorD, aluSrcA, aluSrcB, PCSrc, IRWrite, memWrite, PCWrite, regWrite, aluOp, branch, halt} = 16'b0000000000000000;
         case(state)
         //------------------------------------------------------------------------------
         // (S0) Fetch state: fetch instruction from memory
@@ -241,18 +241,12 @@ module control_unit #(
             EXECUTE_IMM: begin
                 aluSrcA    = 1'b1;
                 aluSrcB    = 2'b10;     // select sign-extended immediate for ALU input B
+                aluOp      = 2'b10;
                 IRWrite    = 1'b0;
                 memWrite   = 1'b0;
                 PCWrite    = 1'b0;
                 branch     = 1'b0;
                 regWrite   = 1'b0;
-                case(opcode)
-                    OP_ADDI: aluControl = 3'b010; // add
-                    OP_ORI : aluControl = 3'b001; // or
-                    OP_ANDI: aluControl = 3'b000; // and
-                    OP_LUI : aluControl = 3'b011; // and (we will handle LUI special case in ALU control logic)
-                    default: aluControl = 3'b000; // default to AND for undefined immediate instructions
-                endcase
             end
         //------------------------------------------------------------------------------
         // (S12) HALT state: set halt signal and disable all other operations
@@ -274,16 +268,26 @@ module control_unit #(
             2'b00: aluControl = 3'b010; // add (for lw/sw address calculation and addi)
             2'b01: aluControl = 3'b110; // sub (for beq)
             2'b1?: begin
-                case(funct)
-                    6'b100000: aluControl = 3'b010; // ADD
-                    6'b100010: aluControl = 3'b110; // SUB
-                    6'b100100: aluControl = 3'b000; // AND
-                    6'b100101: aluControl = 3'b001; // OR
-                    6'b101010: aluControl = 3'b111; // SLT
-                    6'b000000: aluControl = 3'b011; // SLL
-                    6'b000010: aluControl = 3'b100; // SRL
-                    default:   aluControl = 3'b000; // default to AND for undefined funct
-                endcase
+                if (opcode == OP_RTYPE) begin
+                    case(funct)
+                        6'b100000: aluControl = 3'b010; // ADD
+                        6'b100010: aluControl = 3'b110; // SUB
+                        6'b100100: aluControl = 3'b000; // AND
+                        6'b100101: aluControl = 3'b001; // OR
+                        6'b101010: aluControl = 3'b111; // SLT
+                        6'b000000: aluControl = 3'b011; // SLL
+                        6'b000010: aluControl = 3'b100; // SRL
+                        default:   aluControl = 3'b000; // default to AND for undefined funct
+                    endcase
+                end else begin
+                    case(opcode)
+                        OP_ADDI: aluControl = 3'b010;
+                        OP_ANDI: aluControl = 3'b000;
+                        OP_ORI : aluControl = 3'b001;
+                        OP_LUI : aluControl = 3'b101;
+                        default: aluControl = 3'b000;
+                    endcase
+                end
             end
             default: aluControl = 3'b000; // default to AND for undefined aluOp
         endcase
