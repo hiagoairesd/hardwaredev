@@ -56,12 +56,12 @@ module cpu_mc_tb();
 
     // Memory index width used only for formatting/printing addresses in the TB
     // (DUT may have its own internal width/behavior).
-    localparam int ADDR_W = 8;
+    localparam int ADDR_W = 32;
     localparam int DATA_W = 32;
 
     // Maximum number of cycles the TB will allow before declaring TIMEOUT.
     // This is a safety net to prevent infinite simulations if HALT is not reached.
-    integer max_cycles = 500;
+    integer max_cycles = 2500;
 
     //==============================================================================
     // 2) Signals (TB <-> DUT) + TB runtime config
@@ -191,25 +191,30 @@ module cpu_mc_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/cpu/multi_cycle/assembly/regs.hex",               DUT.memory.mem);
-                // 2:  $readmemh("../source/verif/cpu/multi_cycle/assembly/basic_swlw.hex",         DUT.memory.mem);
-                // 3:  $readmemh("../source/verif/cpu/multi_cycle/assembly/border_swlw.hex",        DUT.memory.mem);
-                // 4:  $readmemh("../source/verif/cpu/multi_cycle/assembly/rtype.hex",              DUT.memory.mem);
-                // 5:  $readmemh("../source/verif/cpu/multi_cycle/assembly/jump.hex",               DUT.memory.mem);
-                // 6:  $readmemh("../source/verif/cpu/multi_cycle/assembly/beq.hex",                DUT.memory.mem);
-                // 7:  $readmemh("../source/verif/cpu/multi_cycle/assembly/andi.hex",               DUT.memory.mem);
-                // 8:  $readmemh("../source/verif/cpu/multi_cycle/assembly/ori.hex",                DUT.memory.mem);
-                // 9:  $readmemh("../source/verif/cpu/multi_cycle/assembly/lui.hex",                DUT.memory.mem);
-                // 10: $readmemh("../source/verif/cpu/multi_cycle/assembly/sll.hex",                DUT.memory.mem);
-                // 11: $readmemh("../source/verif/cpu/multi_cycle/assembly/srl.hex",                DUT.memory.mem);
-                // 12: $readmemh("../source/verif/cpu/multi_cycle/assembly/bne.hex",                DUT.memory.mem);
-                // 13: $readmemh("../source/verif/cpu/multi_cycle/assembly/blt.hex",                DUT.memory.mem);
-                // 14: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci.hex",          DUT.memory.mem);
-                // 15: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci_overflow.hex", DUT.memory.mem);
+                1:  $readmemh("../source/verif/cpu/multi_cycle/assembly/regs.hex",                 DUT.memory.mem);
+                2:  $readmemh("../source/verif/cpu/multi_cycle/assembly/basic_swlw.hex",           DUT.memory.mem);
+                3:  $readmemh("../source/verif/cpu/multi_cycle/assembly/border_swlw.hex",          DUT.memory.mem);
+                4:  $readmemh("../source/verif/cpu/multi_cycle/assembly/rtype.hex",                DUT.memory.mem);
+                5:  $readmemh("../source/verif/cpu/multi_cycle/assembly/jump.hex",                 DUT.memory.mem);
+                6:  $readmemh("../source/verif/cpu/multi_cycle/assembly/beq.hex",                  DUT.memory.mem);
+                7:  $readmemh("../source/verif/cpu/multi_cycle/assembly/andi.hex",                 DUT.memory.mem);
+                8:  $readmemh("../source/verif/cpu/multi_cycle/assembly/ori.hex",                  DUT.memory.mem);
+                9:  $readmemh("../source/verif/cpu/multi_cycle/assembly/lui.hex",                  DUT.memory.mem);
+                10: $readmemh("../source/verif/cpu/multi_cycle/assembly/sll.hex",                  DUT.memory.mem);
+                11: $readmemh("../source/verif/cpu/multi_cycle/assembly/srl.hex",                  DUT.memory.mem);
+                12: $readmemh("../source/verif/cpu/multi_cycle/assembly/bne.hex",                  DUT.memory.mem);
+                13: $readmemh("../source/verif/cpu/multi_cycle/assembly/blt.hex",                  DUT.memory.mem);
+                14: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci.hex",            DUT.memory.mem);
+                15: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci_overflow.hex",   DUT.memory.mem);
+                16: $readmemh("../source/verif/cpu/multi_cycle/assembly/zero_register_protection.hex", DUT.memory.mem);
+                17: $readmemh("../source/verif/cpu/multi_cycle/assembly/halt_placement.hex",       DUT.memory.mem);
+                18: $readmemh("../source/verif/cpu/multi_cycle/assembly/loop_counter.hex",         DUT.memory.mem);
+                19: $readmemh("../source/verif/cpu/multi_cycle/assembly/array_sum.hex",            DUT.memory.mem);
+                20: $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",          DUT.memory.mem);
                 100: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_mem_invasion.hex",   DUT.memory.mem);
-                102: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_instr_overflow.hex", DUT.memory.mem);
-                // default:
-                    // $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
+                101: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_instr_overflow.hex", DUT.memory.mem);
+                default:
+                    $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
             endcase
         end
     endtask
@@ -312,7 +317,7 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
             $display({`ANSI_BOLD, "--------", `ANSI_RST});
             check_reg(1, DUT.register_file.regs[1], 32'd42);
-            check_mem(0, DUT.memory.mem[0], 32'd42);
+            check_mem(128, DUT.memory.mem[128], 32'd42);
             check_reg(2, DUT.register_file.regs[2], 32'd42);
         end
     endtask
@@ -330,7 +335,7 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BORDER SW/LW TESTS [3] ", `ANSI_RST});
             $display({`ANSI_BOLD, "-------", `ANSI_RST});
-            mem_word_idx = (8'hFF >> 2);
+            mem_word_idx = (8'hFF >> 2) + 128;
             check_reg(1, DUT.register_file.regs[1],           32'd32767);
             check_reg(2, DUT.register_file.regs[2],          -32'sd32768);
             check_reg(3, DUT.register_file.regs[3],          -32'sd1);
@@ -419,8 +424,8 @@ module cpu_mc_tb();
             check_reg(2, DUT.register_file.regs[2], 32'd305398015);
             check_reg(3, DUT.register_file.regs[3], 32'd15);
             check_reg(4, DUT.register_file.regs[4], 32'd240);
-            check_mem(0, DUT.memory.mem[0], 32'd15);
-            check_mem(4, DUT.memory.mem[4], 32'd240);
+            check_mem(128, DUT.memory.mem[128], 32'd15);
+            check_mem(132, DUT.memory.mem[132], 32'd240);
         end
     endtask
 
@@ -441,8 +446,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd241);
             check_reg(4, DUT.register_file.regs[4], 32'd3855);
             check_reg(5, DUT.register_file.regs[5], 32'd4095);
-            check_mem(0, DUT.memory.mem[0], 32'd241);
-            check_mem(4, DUT.memory.mem[4], 32'd4095);
+            check_mem(128, DUT.memory.mem[128], 32'd241);
+            check_mem(132, DUT.memory.mem[132], 32'd4095);
         end
     endtask
 
@@ -462,9 +467,9 @@ module cpu_mc_tb();
             check_reg(2, DUT.register_file.regs[2], 32'd0);
             check_reg(3, DUT.register_file.regs[3], 32'd4294901760);
             check_reg(4, DUT.register_file.regs[4], 32'd305441741);
-            check_mem(0, DUT.memory.mem[0], 32'd305397760);
-            check_mem(4, DUT.memory.mem[4], 32'd4294901760);
-            check_mem(8, DUT.memory.mem[8], 32'd305441741);
+            check_mem(128, DUT.memory.mem[128], 32'd305397760);
+            check_mem(132, DUT.memory.mem[132], 32'd4294901760);
+            check_mem(136, DUT.memory.mem[136], 32'd305441741);
         end
     endtask
 
@@ -485,8 +490,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd32);
             check_reg(4, DUT.register_file.regs[4], 32'd240);
             check_reg(5, DUT.register_file.regs[5], 32'd61440);
-            check_mem(0, DUT.memory.mem[0], 32'd16);
-            check_mem(4, DUT.memory.mem[4], 32'd61440);
+            check_mem(128, DUT.memory.mem[128], 32'd16);
+            check_mem(132, DUT.memory.mem[132], 32'd61440);
         end
     endtask
 
@@ -507,8 +512,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd240);
             check_reg(4, DUT.register_file.regs[4], 32'd15);
             check_reg(5, DUT.register_file.regs[5], 32'd0);
-            check_mem(0, DUT.memory.mem[0], 32'd1073741824);
-            check_mem(4, DUT.memory.mem[4], 32'd15);
+            check_mem(128, DUT.memory.mem[128], 32'd1073741824);
+            check_mem(132, DUT.memory.mem[132], 32'd15);
         end
     endtask
 
@@ -530,7 +535,7 @@ module cpu_mc_tb();
             check_reg(4, DUT.register_file.regs[4], 32'd5);
             check_reg(5, DUT.register_file.regs[5], 32'd5);
             check_reg(6, DUT.register_file.regs[6], 32'd13107);
-            check_mem(0, DUT.memory.mem[0], 32'd13107);
+            check_mem(128, DUT.memory.mem[128], 32'd13107);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -545,9 +550,9 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BLT TESTS [13] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_mem(0, DUT.memory.mem[0], 32'd1);
-            check_mem(1, DUT.memory.mem[1], 32'd1);
-            check_mem(2, DUT.memory.mem[2], 32'd1);
+            check_mem(128, DUT.memory.mem[128], 32'd1);
+            check_mem(129, DUT.memory.mem[129], 32'd1);
+            check_mem(130, DUT.memory.mem[130], 32'd1);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -568,31 +573,31 @@ module cpu_mc_tb();
                 check_reg(3, DUT.register_file.regs[3],  32'h1055);
                 check_reg(4, DUT.register_file.regs[4],  32'h0014);
                 check_reg(5, DUT.register_file.regs[5],  32'h0014);
-                check_reg(6, DUT.register_file.regs[6],  32'h0014);
+                check_reg(6, DUT.register_file.regs[6],  32'h0050);
                 check_reg(7, DUT.register_file.regs[7],  32'h0001);
-                check_mem(0,  DUT.memory.mem[0],  32'h0000);
-                check_mem(1,  DUT.memory.mem[1],  32'h0001);
-                check_mem(2,  DUT.memory.mem[2],  32'h0001);
-                check_mem(3,  DUT.memory.mem[3],  32'h0002);
-                check_mem(4,  DUT.memory.mem[4],  32'h0003);
-                check_mem(5,  DUT.memory.mem[5],  32'h0005);
-                check_mem(6,  DUT.memory.mem[6],  32'h0008);
-                check_mem(7,  DUT.memory.mem[7],  32'h000D);
-                check_mem(8,  DUT.memory.mem[8],  32'h0015);
-                check_mem(9,  DUT.memory.mem[9],  32'h0022);
-                check_mem(10, DUT.memory.mem[10], 32'h0037);
-                check_mem(11, DUT.memory.mem[11], 32'h0059);
-                check_mem(12, DUT.memory.mem[12], 32'h0090);
-                check_mem(13, DUT.memory.mem[13], 32'h00E9);
-                check_mem(14, DUT.memory.mem[14], 32'h0179);
-                check_mem(15, DUT.memory.mem[15], 32'h0262);
-                check_mem(16, DUT.memory.mem[16], 32'h03DB);
-                check_mem(17, DUT.memory.mem[17], 32'h063D);
-                check_mem(18, DUT.memory.mem[18], 32'h0A18);
-                check_mem(19, DUT.memory.mem[19], 32'h1055);
-                check_mem(30, DUT.memory.mem[30], 32'h0001);
+                check_mem(128, DUT.memory.mem[128],  32'h0000);
+                check_mem(129, DUT.memory.mem[129],  32'h0001);
+                check_mem(130, DUT.memory.mem[130],  32'h0001);
+                check_mem(131, DUT.memory.mem[131],  32'h0002);
+                check_mem(132, DUT.memory.mem[132],  32'h0003);
+                check_mem(133, DUT.memory.mem[133],  32'h0005);
+                check_mem(134, DUT.memory.mem[134],  32'h0008);
+                check_mem(135, DUT.memory.mem[135],  32'h000D);
+                check_mem(136, DUT.memory.mem[136],  32'h0015);
+                check_mem(137, DUT.memory.mem[137],  32'h0022);
+                check_mem(138, DUT.memory.mem[138], 32'h0037);
+                check_mem(139, DUT.memory.mem[139], 32'h0059);
+                check_mem(140, DUT.memory.mem[140], 32'h0090);
+                check_mem(141, DUT.memory.mem[141], 32'h00E9);
+                check_mem(142, DUT.memory.mem[142], 32'h0179);
+                check_mem(143, DUT.memory.mem[143], 32'h0262);
+                check_mem(144, DUT.memory.mem[144], 32'h03DB);
+                check_mem(145, DUT.memory.mem[145], 32'h063D);
+                check_mem(146, DUT.memory.mem[146], 32'h0A18);
+                check_mem(147, DUT.memory.mem[147], 32'h1055);
+                check_mem(158, DUT.memory.mem[158], 32'h0001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(31, DUT.memory.mem[31], 32'h1055);
+                check_mem(159, DUT.memory.mem[159], 32'h1055);
                 $display({`ANSI_BLU, "   Stores final Fibonacci value (fib(20) = 4181)", `ANSI_RST});
             end
     endtask
@@ -613,89 +618,177 @@ module cpu_mc_tb();
                 check_reg(3, DUT.register_file.regs[3],  32'hB11924E1);
                 check_reg(4, DUT.register_file.regs[4],  32'h0000002F);
                 check_reg(5, DUT.register_file.regs[5],  32'h00000031);
-                check_reg(6, DUT.register_file.regs[6],  32'h0000002F);
+                check_reg(6, DUT.register_file.regs[6],  32'h000000BC);
                 check_reg(7, DUT.register_file.regs[7],  32'h00000001);
                 check_reg(8, DUT.register_file.regs[8],  32'h00000001);
                 check_reg(9, DUT.register_file.regs[9],  32'h00000001);
-                check_mem(0,  DUT.memory.mem[0],  32'h00000000);
-                check_mem(1,  DUT.memory.mem[1],  32'h00000001);
-                check_mem(2,  DUT.memory.mem[2],  32'h00000001);
-                check_mem(3,  DUT.memory.mem[3],  32'h00000002);
-                check_mem(4,  DUT.memory.mem[4],  32'h00000003);
-                check_mem(5,  DUT.memory.mem[5],  32'h00000005);
-                check_mem(6,  DUT.memory.mem[6],  32'h00000008);
-                check_mem(7,  DUT.memory.mem[7],  32'h0000000D);
-                check_mem(8,  DUT.memory.mem[8],  32'h00000015);
-                check_mem(9,  DUT.memory.mem[9],  32'h00000022);
-                check_mem(10, DUT.memory.mem[10], 32'h00000037);
-                check_mem(11, DUT.memory.mem[11], 32'h00000059);
-                check_mem(12, DUT.memory.mem[12], 32'h00000090);
-                check_mem(13, DUT.memory.mem[13], 32'h000000E9);
-                check_mem(14, DUT.memory.mem[14], 32'h00000179);
-                check_mem(15, DUT.memory.mem[15], 32'h00000262);
-                check_mem(16, DUT.memory.mem[16], 32'h000003DB);
-                check_mem(17, DUT.memory.mem[17], 32'h0000063D);
-                check_mem(18, DUT.memory.mem[18], 32'h00000A18);
-                check_mem(19, DUT.memory.mem[19], 32'h00001055);
-                check_mem(20, DUT.memory.mem[20], 32'h00001A6D);
-                check_mem(21, DUT.memory.mem[21], 32'h00002AC2);
-                check_mem(22, DUT.memory.mem[22], 32'h0000452F);
-                check_mem(23, DUT.memory.mem[23], 32'h00006FF1);
-                check_mem(24, DUT.memory.mem[24], 32'h0000B520);
-                check_mem(25, DUT.memory.mem[25], 32'h00012511);
-                check_mem(26, DUT.memory.mem[26], 32'h0001DA31);
-                check_mem(27, DUT.memory.mem[27], 32'h0002FF42);
-                check_mem(28, DUT.memory.mem[28], 32'h0004D973);
-                check_mem(29, DUT.memory.mem[29], 32'h0007D8B5);
-                check_mem(33, DUT.memory.mem[33], 32'h0035C7E2);
-                check_mem(34, DUT.memory.mem[34], 32'h005704E7);
-                check_mem(35, DUT.memory.mem[35], 32'h008CCCC9);
-                check_mem(36, DUT.memory.mem[36], 32'h00E3D1B0);
-                check_mem(37, DUT.memory.mem[37], 32'h01709E79);
-                check_mem(38, DUT.memory.mem[38], 32'h02547029);
-                check_mem(39, DUT.memory.mem[39], 32'h03C50EA2);
-                check_mem(40, DUT.memory.mem[40], 32'h06197ECB);
-                check_mem(41, DUT.memory.mem[41], 32'h09DE8D6D);
-                check_mem(42, DUT.memory.mem[42], 32'h0FF80C38);
-                check_mem(43, DUT.memory.mem[43], 32'h19D699A5);
-                check_mem(44, DUT.memory.mem[44], 32'h29CEA5DD);
-                check_mem(45, DUT.memory.mem[45], 32'h43A53F82);
-                check_mem(46, DUT.memory.mem[46], 32'h6D73E55F);
-                check_mem(30, DUT.memory.mem[30], 32'h00000001);
+                check_mem(128, DUT.memory.mem[128],  32'h00000000);
+                check_mem(129, DUT.memory.mem[129],  32'h00000001);
+                check_mem(130, DUT.memory.mem[130],  32'h00000001);
+                check_mem(131, DUT.memory.mem[131],  32'h00000002);
+                check_mem(132, DUT.memory.mem[132],  32'h00000003);
+                check_mem(133, DUT.memory.mem[133],  32'h00000005);
+                check_mem(134, DUT.memory.mem[134],  32'h00000008);
+                check_mem(135, DUT.memory.mem[135],  32'h0000000D);
+                check_mem(136, DUT.memory.mem[136],  32'h00000015);
+                check_mem(137, DUT.memory.mem[137],  32'h00000022);
+                check_mem(138, DUT.memory.mem[138], 32'h00000037);
+                check_mem(139, DUT.memory.mem[139], 32'h00000059);
+                check_mem(140, DUT.memory.mem[140], 32'h00000090);
+                check_mem(141, DUT.memory.mem[141], 32'h000000E9);
+                check_mem(142, DUT.memory.mem[142], 32'h00000179);
+                check_mem(143, DUT.memory.mem[143], 32'h00000262);
+                check_mem(144, DUT.memory.mem[144], 32'h000003DB);
+                check_mem(145, DUT.memory.mem[145], 32'h0000063D);
+                check_mem(146, DUT.memory.mem[146], 32'h00000A18);
+                check_mem(147, DUT.memory.mem[147], 32'h00001055);
+                check_mem(148, DUT.memory.mem[148], 32'h00001A6D);
+                check_mem(149, DUT.memory.mem[149], 32'h00002AC2);
+                check_mem(150, DUT.memory.mem[150], 32'h0000452F);
+                check_mem(151, DUT.memory.mem[151], 32'h00006FF1);
+                check_mem(152, DUT.memory.mem[152], 32'h0000B520);
+                check_mem(153, DUT.memory.mem[153], 32'h00012511);
+                check_mem(154, DUT.memory.mem[154], 32'h0001DA31);
+                check_mem(155, DUT.memory.mem[155], 32'h0002FF42);
+                check_mem(156, DUT.memory.mem[156], 32'h0004D973);
+                check_mem(157, DUT.memory.mem[157], 32'h0007D8B5);
+                check_mem(161, DUT.memory.mem[161], 32'h0035C7E2);
+                check_mem(162, DUT.memory.mem[162], 32'h005704E7);
+                check_mem(163, DUT.memory.mem[163], 32'h008CCCC9);
+                check_mem(164, DUT.memory.mem[164], 32'h00E3D1B0);
+                check_mem(165, DUT.memory.mem[165], 32'h01709E79);
+                check_mem(166, DUT.memory.mem[166], 32'h02547029);
+                check_mem(167, DUT.memory.mem[167], 32'h03C50EA2);
+                check_mem(168, DUT.memory.mem[168], 32'h06197ECB);
+                check_mem(169, DUT.memory.mem[169], 32'h09DE8D6D);
+                check_mem(170, DUT.memory.mem[170], 32'h0FF80C38);
+                check_mem(171, DUT.memory.mem[171], 32'h19D699A5);
+                check_mem(172, DUT.memory.mem[172], 32'h29CEA5DD);
+                check_mem(173, DUT.memory.mem[173], 32'h43A53F82);
+                check_mem(174, DUT.memory.mem[174], 32'h6D73E55F);
+                check_mem(158, DUT.memory.mem[158], 32'h00000001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(31, DUT.memory.mem[31], 32'h6D73E55F);
+                check_mem(159, DUT.memory.mem[159], 32'h6D73E55F);
                 $display({`ANSI_BLU, "   Last valid Fibonacci value (fib(46) = 1836311903)", `ANSI_RST});
-                check_mem(32, DUT.memory.mem[32], 32'hB11924E1);
+                check_mem(160, DUT.memory.mem[160], 32'hB11924E1);
                 $display({`ANSI_BLU, "   Overflow detected | value (fib(47) wrapped = 2971215073)", `ANSI_RST});
             end
         endtask
+
+    //------------------------------------------------------------------------------
+    // zero_register_protection_test()
+    // Test goal:
+    //   - Simple register-only smoke test.
+    //------------------------------------------------------------------------------
+    task automatic zero_register_protection_test;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING REG-SMOKE TESTS [16] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "----------", `ANSI_RST});
+            check_reg(1, DUT.register_file.regs[1], 32'd5);
+            check_reg(2, DUT.register_file.regs[2], 32'd5);
+        end
+    endtask
+
+    //------------------------------------------------------------------------------
+    // halt_placement_test()
+    // Test goal:
+    //   - Validates that instructions after HALT do not execute.
+    //------------------------------------------------------------------------------
+    task automatic halt_placement_test;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING HALT-PLACEMENT TESTS [17] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "------", `ANSI_RST});
+            check_reg(1, DUT.register_file.regs[1], 32'd1);
+            check_mem(128, DUT.memory.mem[128], 32'd0);
+        end
+    endtask
+
+    //------------------------------------------------------------------------------
+    // loop_counter_test()
+    // Test goal:
+    //   - Validates loop with BLT and accumulation result.
+    //------------------------------------------------------------------------------
+    task automatic loop_counter_test;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING LOOP-COUNTER TESTS [18] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "------", `ANSI_RST});
+            check_reg(1, DUT.register_file.regs[1], 32'd11);
+            check_reg(2, DUT.register_file.regs[2], 32'd11);
+            check_reg(3, DUT.register_file.regs[3], 32'd55);
+            check_mem(128, DUT.memory.mem[128], 32'd55);
+        end
+    endtask
+
+    //------------------------------------------------------------------------------
+    // array_sum_test()
+    // Test goal:
+    //   - Validates multiple SW/LW accesses and final reduction.
+    //------------------------------------------------------------------------------
+    task automatic array_sum_test;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING ARRAY-SUM TESTS [19] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------", `ANSI_RST});
+            check_mem(144, DUT.memory.mem[144], 32'd10);
+            check_mem(145, DUT.memory.mem[145], 32'd20);
+            check_mem(146, DUT.memory.mem[146], 32'd30);
+            check_reg(2, DUT.register_file.regs[2], 32'd10);
+            check_reg(3, DUT.register_file.regs[3], 32'd20);
+            check_reg(4, DUT.register_file.regs[4], 32'd30);
+            check_reg(5, DUT.register_file.regs[5], 32'd60);
+            check_mem(128, DUT.memory.mem[128], 32'd60);
+        end
+    endtask
+
     //------------------------------------------------------------------------------
     // integration_test()
     // Test goal:
-    //   - Validates multiple instructions working together (default test).
+    //   - Validates all supported instruction classes working together.
     // PASS criteria:
-    //   - Expected final architectural state (selected regs + memory locations).
+    //   - Expected final architectural state for ALU, memory, branches, jump, and halt.
     //------------------------------------------------------------------------------
     task automatic integration_test;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
-            $write({`ANSI_BOLD, " RUNNING INTEGRATION TESTS [default] ", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING INTEGRATION TESTS [20/default] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_reg(1,  DUT.register_file.regs[1],  32'd10);
-            check_reg(2,  DUT.register_file.regs[2],  32'd15);
-            check_reg(3,  DUT.register_file.regs[3],  32'd65536);
-            check_reg(4,  DUT.register_file.regs[4],  32'd40);
-            check_reg(5,  DUT.register_file.regs[5],  32'd20);
-            check_reg(7,  DUT.register_file.regs[7],  32'd15);
-            check_reg(8,  DUT.register_file.regs[8],  32'd31);
-            check_reg(9,  DUT.register_file.regs[9],  32'd15);
-            check_reg(10, DUT.register_file.regs[10], 32'd25);
-            check_reg(11, DUT.register_file.regs[11], 32'd10);
-            check_mem(0,  DUT.memory.mem[0],   32'd25);
-            check_reg(12, DUT.register_file.regs[12], 32'd25);
+            check_reg(1,  DUT.register_file.regs[1],  32'd15);
+            check_reg(2,  DUT.register_file.regs[2],  32'd6);
+            check_reg(3,  DUT.register_file.regs[3],  32'd6);
+            check_reg(4,  DUT.register_file.regs[4],  32'd4);
+            check_reg(5,  DUT.register_file.regs[5],  32'h123400f0);
+            check_reg(6,  DUT.register_file.regs[6],  32'h000000f0);
+            check_reg(7,  DUT.register_file.regs[7],  32'd4);
+            check_reg(8,  DUT.register_file.regs[8],  32'd2);
+            check_reg(9,  DUT.register_file.regs[9],  32'd242);
+            check_reg(10, DUT.register_file.regs[10], 32'd241);
+            check_reg(11, DUT.register_file.regs[11], 32'd240);
+            check_reg(12, DUT.register_file.regs[12], 32'd242);
             check_reg(13, DUT.register_file.regs[13], 32'd1);
             check_reg(14, DUT.register_file.regs[14], 32'd0);
-            check_mem(1,  DUT.memory.mem[1],   32'd0);
+            check_reg(15, DUT.register_file.regs[15], 32'd532);
+            check_reg(16, DUT.register_file.regs[16], 32'd15);
+            check_reg(20, DUT.register_file.regs[20], 32'd0);
+            check_reg(21, DUT.register_file.regs[21], 32'd111);
+            check_reg(22, DUT.register_file.regs[22], 32'd0);
+            check_reg(23, DUT.register_file.regs[23], 32'd333);
+            check_reg(24, DUT.register_file.regs[24], 32'd444);
+            check_reg(25, DUT.register_file.regs[25], 32'd0);
+            check_reg(26, DUT.register_file.regs[26], 32'd777);
+            check_reg(27, DUT.register_file.regs[27], 32'hffffffff);
+            check_reg(28, DUT.register_file.regs[28], 32'hffffffff);
+            check_reg(29, DUT.register_file.regs[29], 32'd0);
+            check_reg(30, DUT.register_file.regs[30], 32'd0);
+            check_mem(128, DUT.memory.mem[128], 32'd1);
+            check_mem(129, DUT.memory.mem[129], 32'd3);
+            check_mem(130, DUT.memory.mem[130], 32'd6);
+            check_mem(131, DUT.memory.mem[131], 32'd10);
+            check_mem(132, DUT.memory.mem[132], 32'd15);
+            check_mem(133, DUT.memory.mem[133], 32'hffffffff);
+            check_mem(134, DUT.memory.mem[134], 32'd0);
         end
     endtask
 
@@ -744,7 +837,7 @@ module cpu_mc_tb();
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
-
+            
             // Enforce termination condition
             if (DUT.halt != 1'b1) begin
                 $fatal(1,
@@ -769,6 +862,11 @@ module cpu_mc_tb();
                 13: blt_test();
                 14: fibonacci_test();
                 15: fibonacci_overflow_test();
+                16: zero_register_protection_test();
+                17: halt_placement_test();
+                18: loop_counter_test();
+                19: array_sum_test();
+                20: integration_test();
                 default: integration_test();
             endcase
 
@@ -782,7 +880,6 @@ module cpu_mc_tb();
     //==============================================================================
     // 12) Main (entry point)
     //==============================================================================
-
     // Entry point: runs selected test (from +test=<id>) and ends simulation.
     initial begin
         run_test(test_id);
