@@ -416,18 +416,38 @@ Total: 20/20 PASS
 ## File Organization
 
 ```
-verif/
-  cpu/
-    multi_cycle/
-      cpu_mc_tb.sv                         # Main testbench
-      assembly/
-        test_1.hex                         # ADD instruction
-        test_2.hex                         # SUB instruction
-        ...
-        test_20.hex                        # Integration test
-        integration.hex                    # (Alias for test_20)
-        fibonacci.hex                      # Fibonacci pattern
-        fibonacci_overflow.hex             # Fibonacci with overflow
+hardwaredev/
+├── source/
+│   ├── verif/
+│   │   ├── cpu/
+│   │   │   ├── multi_cycle/
+│   │   │   │   ├── cpu_mc_tb.sv          # Main testbench
+│   │   │   │   ├── README.md              # This documentation
+│   │   │   │   ├── assembly/              # Multi-cycle test programs
+│   │   │   │   │   ├── regs.hex           # Test 1
+│   │   │   │   │   ├── basic_swlw.hex     # Test 2
+│   │   │   │   │   ├── border_swlw.hex    # Test 3
+│   │   │   │   │   ├── rtype.hex          # Test 4
+│   │   │   │   │   ├── jump.hex           # Test 5
+│   │   │   │   │   ├── beq.hex            # Test 6
+│   │   │   │   │   ├── andi.hex           # Test 7
+│   │   │   │   │   ├── ori.hex            # Test 8
+│   │   │   │   │   ├── lui.hex            # Test 9
+│   │   │   │   │   ├── sll.hex            # Test 10
+│   │   │   │   │   ├── srl.hex            # Test 11
+│   │   │   │   │   ├── bne.hex            # Test 12
+│   │   │   │   │   ├── blt.hex            # Test 13
+│   │   │   │   │   ├── fibonacci.hex      # Test 14
+│   │   │   │   │   ├── fibonacci_overflow.hex # Test 15
+│   │   │   │   │   ├── zero_register_protection.hex # Test 16
+│   │   │   │   │   ├── halt_placement.hex # Test 17
+│   │   │   │   │   ├── loop_counter.hex   # Test 18
+│   │   │   │   │   ├── array_sum.hex      # Test 19
+│   │   │   │   │   ├── integration.hex    # Test 20 / default
+│   │   │   │   │   ├── test_mem_invasion.hex # Test 100
+│   │   │   │   │   └── test_instr_overflow.hex # Test 101
+├── simu/
+│   ├── simulate                           # Unified simulation script
 ```
 
 ## Integration Tips for CI/CD

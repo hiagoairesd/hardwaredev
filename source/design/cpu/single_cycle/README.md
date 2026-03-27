@@ -2,36 +2,38 @@
 
 ## Overview
 
-Implementação de uma CPU MIPS-like de 32 bits com datapath single-cycle.
-Cada instrução é executada em um único ciclo de clock (fetch, decode, execute, memory, write-back no mesmo ciclo combinacional).
+Implementation of a 32-bit MIPS-like CPU with a single-cycle datapath.
+Each instruction is executed in a single clock cycle (fetch, decode, execute, memory, and write-back in the same combinational cycle).
 
 ## Design Files
 
-Pasta: [source/design/cpu/single_cycle](.)
+Folder: [source/design/cpu/single_cycle](.)
 
-- `cpu_sc.v`: integração top-level da CPU single-cycle
-- `control_unit.v`: decodificação de instruções e geração de sinais de controle
-- `instr_mem.v`: memória de instruções
-- `data_mem.v`: memória de dados
-- Reuso de blocos comuns em [source/design/cpu/common](../common):
+- `cpu_sc.v`: single-cycle CPU top-level integration
+- `control_unit.v`: instruction decode and control signal generation
+- `instr_mem.v`: instruction memory
+- `data_mem.v`: data memory
+- Reused common blocks from [source/design/cpu/common](../common):
   - `alu.v`
   - `register_file.v`
 
 ## Architecture Document
 
-Descrição arquitetural completa:
+Full architectural description:
 - [source/design/cpu/single_cycle/ISA/ARCHITECTURE.md](ISA/ARCHITECTURE.md)
 
 ## Verification
 
-Testbenches e programas de teste:
-- Pasta: [source/verif/cpu/single_cycle](../../../verif/cpu/single_cycle)
-- Arquivos principais:
+Testbenches and test programs:
+- Folder: [source/verif/cpu/single_cycle](../../../verif/cpu/single_cycle)
+- Main files:
   - `cpu_sc_tb.sv`
   - `control_unit_tb.sv`
   - `instr_mem_tb.sv`
   - `data_mem_tb.sv`
   - `assembly/`
+- Test guide:
+  - [source/verif/cpu/single_cycle/README.md](../../../verif/cpu/single_cycle/README.md)
 
 ### CPU Test Suite (single-cycle)
 
@@ -55,7 +57,7 @@ Testbenches e programas de teste:
 
 ## Simulation
 
-A partir de [simu](../../../../simu):
+From [simu](../../../../simu):
 
 ```bash
 ./simulate cpu_sc
@@ -64,7 +66,7 @@ A partir de [simu](../../../../simu):
 ./simulate cpu_sc +test=1 +trace_w
 ```
 
-Também é possível rodar módulos individualmente:
+You can also run modules individually:
 
 ```bash
 ./simulate alu
@@ -75,17 +77,18 @@ Também é possível rodar módulos individualmente:
 ### Quick regression
 
 ```bash
+cd ../../../../simu
 for i in {1..15}; do
   echo "Running test $i"
-  (cd ../../../../simu && ./simulate cpu_sc +test=$i) || echo "Test $i failed"
+  ./simulate cpu_sc +test=$i || exit 1
 done
 ```
 
-## Scope da ISA (resumo)
+## ISA Scope (summary)
 
 - R-Type: `ADD`, `SUB`, `AND`, `OR`, `SLT`, `SLL`, `SRL`
 - I-Type: `ADDI`, `ANDI`, `ORI`, `LUI`, `LW`, `SW`, `BEQ`, `BNE`, `BLT`
 - J-Type: `JUMP`
 - System: `HALT`
 
-Para detalhes de codificação, política de imediato, fluxo de PC e contratos arquiteturais, consultar o arquivo de arquitetura.
+For encoding details, immediate handling policy, PC flow, and architectural contracts, refer to the architecture document.
