@@ -35,7 +35,8 @@
 
 module cpu_sc #(
     parameter int ADDR_W = 8,
-    parameter int DATA_W = 32
+    parameter int DATA_W = 32,
+    parameter int DEPTH  = 256;
 )(
     input  wire clk,
     input  wire rst,
@@ -45,10 +46,8 @@ module cpu_sc #(
     // 1) Local parameters
     //==============================================================================
 
-    localparam int INSTR_W = 32;
-    localparam int DEPTH = 256;
+    localparam int INSTR_W = 32;    
     localparam int NREGS = 32;
-    localparam int REG_ADDR_W = 5;
 
     //==============================================================================
     // 2) Architectural state (PC) + halt interface
@@ -138,7 +137,7 @@ module cpu_sc #(
     wire [DATA_W-1:0] rf_wdata;
 
     register_file # (
-        .ADDR_W(REG_ADDR_W),
+        .ADDR_W(ADDR_W),
         .DATA_W(DATA_W),
         .NREGS (NREGS)
     ) register_file (
