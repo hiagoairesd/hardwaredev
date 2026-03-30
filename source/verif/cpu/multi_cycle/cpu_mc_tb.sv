@@ -100,7 +100,7 @@ module cpu_mc_tb();
     // Free-running clock. All TB stimulus/checks are synchronized to posedge clk.
     initial begin
         clk = 1'b0;
-        forever #5 clk = ~clk;
+        forever #1 clk = ~clk;
     end
 
     //==============================================================================
@@ -145,12 +145,12 @@ module cpu_mc_tb();
         if (!rst) begin
             // 1. Primary Trace (Time, PC, Instr, State)
             if (trace) begin
-                $display("t=%0t [PC=%0d] [Instr=%08h] [State=%s]",
+                $display("t = %0t [PC = %0d] [Instr = %08h] [State = %s]",
                          $time, DUT.pc, DUT.instr, get_state_name(DUT.control_unit.state));
             end
             // 2. Internal Microarchitecture Trace (A, B, ALUOut)
             if (trace_m) begin
-                $display("   [INTERNAL] A=%h | B=%h | ALUOut=%h | State=%0d", 
+                $display("   [INTERNAL] A = %h | B = %h | ALUOut = %h | State = %0d", 
                          DUT.rf_regA, DUT.rf_regB, DUT.alu_reg, DUT.control_unit.state);
             end
             // 3. Writeback/Commit Trace (Events)
@@ -214,7 +214,7 @@ module cpu_mc_tb();
                 100: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_mem_invasion.hex",   DUT.memory.mem);
                 101: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_instr_overflow.hex", DUT.memory.mem);
                 default:
-                    $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
+                    $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",          DUT.memory.mem);
             endcase
         end
     endtask
