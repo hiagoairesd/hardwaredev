@@ -123,7 +123,7 @@ module control_unit_tb();
         end
     endtask
 
-    control_unit #(
+    control_unit_mc #(
         .INSTR_W(INSTR_W)
     ) DUT (
         .clk            (clk),

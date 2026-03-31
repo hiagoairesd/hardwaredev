@@ -36,26 +36,25 @@
 module cpu_sc #(
     parameter int ADDR_W = 8,
     parameter int DATA_W = 32,
-    parameter int DEPTH  = 256;
+    parameter int DEPTH  = 256
 )(
     input  wire clk,
     input  wire rst,
-    output wire halted
+    output wire halt
 );
     //==============================================================================
     // 1) Local parameters
     //==============================================================================
 
-    localparam int INSTR_W = 32;    
-    localparam int NREGS = 32;
+    localparam INSTR_W = 32;
 
     //==============================================================================
     // 2) Architectural state (PC) + halt interface
     //==============================================================================
 
     // Halt signal from control unit; exported as output 'halted'
-    wire halt;
-    assign halted = halt;
+    // wire halt;
+    // assign halted = halt;
 
     // Program counter is word-indexed (ADDR_W bits)
     reg  [ADDR_W-1:0] pc;
@@ -110,7 +109,9 @@ module cpu_sc #(
     wire [2:0] aluControl;
     wire       take_branch, memWrite, memtoReg, jump, is_shift, imm_is_zext;
 
-    control_unit control_unit (
+    control_unit #(
+        .INSTR_W        (INSTR_W)
+    )control_unit (
         .instr          (instr),          // Current instruction
         .aluOut_is_zero (is_zero),        // ALU result is zero flag
         .signed_less    (signed_less),    // ALU signed less flag
@@ -137,9 +138,7 @@ module cpu_sc #(
     wire [DATA_W-1:0] rf_wdata;
 
     register_file # (
-        .ADDR_W(ADDR_W),
-        .DATA_W(DATA_W),
-        .NREGS (NREGS)
+        .DATA_W     (DATA_W)
     ) register_file (
         .clk        (clk),
         .rst        (rst),

@@ -13,7 +13,7 @@ The top-level module is `cpu`, responsible for connecting all functional units a
 | **cpu** | Integrates datapath and control path, updates PC, exports halt status |
 | **instr_mem** | Read-only instruction memory, indexed by PC |
 | **control_unit** | Decodes instruction and generates control signals |
-| **register_file** | 32x32 general-purpose register bank with 2 read ports and 1 write port |
+| **register_file** | Shared general-purpose register bank; in this CPU it is used as a 32x32 bank with 2 read ports and 1 write port |
 | **alu** | Arithmetic, logic, shift, and comparison operations |
 | **data_mem** | Data memory for load/store operations |
 
@@ -37,8 +37,10 @@ The datapath is composed of the following flow:
 - **Addressing policy**: word-indexed PC (`pc + 1` advances to next instruction)
 
 ### Register File
-- **Registers**: 32 registers (`NREGS = 32`)
-- **Register width**: 32 bits
+- **Implementation location**: `source/design/cpu/common/register_file.v`
+- **External parameterization**: `DATA_W` (default: 32)
+- **Internal fixed organization**: 32 registers (`NREGS = 32`) with 5-bit register addresses
+- **Register width in this CPU**: 32 bits
 - **Ports**:
   - Read port 1: address `rs`
   - Read port 2: address `rt`

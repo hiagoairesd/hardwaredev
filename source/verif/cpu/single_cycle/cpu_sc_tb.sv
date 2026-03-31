@@ -7,7 +7,7 @@
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
 //   - Applies reset, runs the CPU for up to max_cycles cycles
-//   - Terminates when DUT raises halted==1 (HALT instruction observed by DUT)
+//   - Terminates when DUT raises halt==1 (HALT instruction observed by DUT)
 //   - Checks architectural state (register file + data memory) at end
 //
 // ASSUMPTIONS / CONTRACT (IMPORTANT)
@@ -20,8 +20,8 @@
 //       DUT.memWrite, DUT.alu_out, DUT.dm_data
 //       DUT.take_branch, DUT.jump
 //   - HALT handling:
-//       DUT asserts halted==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
-//       TB ends execution as soon as halted is observed (posedge clk polling).
+//       DUT asserts halt==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
+//       TB ends execution as soon as halt is observed (posedge clk polling).
 //
 // PLUSARGS
 //   +test=<id>      : selects which program to load / which checker to run
@@ -78,7 +78,7 @@ module cpu_sc_tb();
     bit trace, trace_w;
 
     // DUT-provided halt indication
-    wire halted;
+    wire halt;
 
     //==============================================================================
     // 3) DUT instantiation
@@ -90,7 +90,7 @@ module cpu_sc_tb();
     ) DUT (
         .clk    (clk),
         .rst    (rst),
-        .halted (halted)
+        .halt (halt)
     );
 
     //==============================================================================
@@ -702,7 +702,7 @@ module cpu_sc_tb();
     //   5) Run the test-specific checker for id
     //
     // Failure modes:
-    //   - TIMEOUT if halted is not observed within max_cycles
+    //   - TIMEOUT if halt is not observed within max_cycles
     //   - Checker failure if any reg/mem mismatch is detected
     //------------------------------------------------------------------------------
     task automatic run_test(input integer id);
@@ -727,14 +727,14 @@ module cpu_sc_tb();
             // 4) Run loop: stop at HALT or after max_cycles
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
-                if (DUT.halted == 1'b1) begin
+                if (DUT.halt == 1'b1) begin
                     $display({`ANSI_BOLD, `ANSI_BLU, "-> HALT detected @%0t (PC=0x%08h)", `ANSI_RST}, $time, DUT.pc);
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
 
             // Enforce termination condition
-            if (DUT.halted != 1'b1) begin
+            if (DUT.halt != 1'b1) begin
                 $fatal(1,
                        {`ANSI_BOLD, `ANSI_RED, "\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t", `ANSI_RST},
                        max_cycles, DUT.pc, $time);

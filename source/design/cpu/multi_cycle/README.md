@@ -10,7 +10,7 @@ Instructions are split across multiple states, reusing the ALU and memory across
 Folder: [source/design/cpu/multi_cycle](.)
 
 - `cpu_mc.v`: multi-cycle CPU top-level integration
-- `control_unit.v`: FSM-based control unit
+- `control_unit_mc.v`: FSM-based control unit
 - `memory.v`: unified memory (instruction + data)
 - Reused common blocks from [source/design/cpu/common](../common):
   - `alu.v`

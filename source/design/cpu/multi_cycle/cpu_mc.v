@@ -1,7 +1,8 @@
 module cpu_mc #(
     parameter DATA_W = 32,
     parameter ADDR_W = 32,
-    parameter MEM_DEPTH = 256
+    parameter MEM_DEPTH = 256,
+    parameter RF_DEPTH = 32
 )(
     input wire clk,
     input wire rst,
@@ -104,7 +105,7 @@ module cpu_mc #(
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite;
 
-    control_unit #(
+    control_unit_mc #(
         .INSTR_W(DATA_W)
     ) control_unit (
         .clk            (clk),
@@ -137,7 +138,9 @@ module cpu_mc #(
     wire [DATA_W-1:0] rf_data_out2;
     wire [DATA_W-1:0] rf_wdata;
 
-    register_file register_file (
+    register_file #(
+        .DATA_W     (DATA_W)
+    ) register_file (
         .clk        (clk),
         .rst        (rst),
         .we3        (regWrite),
