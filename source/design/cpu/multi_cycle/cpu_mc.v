@@ -170,8 +170,8 @@ module cpu_mc #(
 // ALU operand B:
 //   - aluSrcB=0 selects rt data
 //   - aluSrcB=1 selects 4
-//   - aluSrcB=2 selects imm_ext
-//   - aluSrcB=3 selects imm_ext << 2
+//   - aluSrcB=2 selects imm_ext for I-type ALU ops
+//   - aluSrcB=3 selects imm_ext << 2 for branch target calculation
     wire [DATA_W-1:0] alu_b =
         (aluSrcB == 2'b00) ? rf_regB                    :
         (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4} :
