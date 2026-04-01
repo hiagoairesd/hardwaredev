@@ -1,90 +1,121 @@
 module cpu_pp #(
-    parameter int ADDR_W = 32,
-    parameter int DATA_W = 32,
-    parameter int DEPTH  = 256
+    parameter ADDR_W = 32,
+    parameter DATA_W = 32,
+    parameter DEPTH  = 256
 )(
     input  wire clk,
     input  wire rst,
     output wire halt
 );
-    wire halt;
-    assign halt = halt;
-    reg [ADDR_W-1:0] pc;
 
 //==============================================================================
-// 1) PC Logic
+// 1) PC Logic (Fetch stage)
 //==============================================================================
-    reg  [ADDR_W-1:0] pc;           // Program counter is byte-indexed (ADDR_W bits)
-    wire [ADDR_W-1:0] pc_next;      // Next PC value after selection logic
-    wire [ADDR_W-1:0] PCJump;       // Jump target address for J-type instructions
+    reg  [ADDR_W-1:0] F_PC;                // Program counter is byte-indexed (ADDR_W bits)
+    wire [ADDR_W-1:0] F_PCnext;              // Next PC value after selection logic
+    wire [ADDR_W-1:0] F_PCjump;              // Jump target address for J-type instructions
+    wire [ADDR_W-1:0] F_PCplus4 = F_PC + 4;     // F_PC + 4 for next sequential instruction
 
-    assign PCJump  = {pc[ADDR_W-1:ADDR_W-4], addr, 2'b00};    // Jump target address for J-type instructions
-    assign pc_next = 
-        (PCSrc == 2'b00) ? alu_out :   
-        (PCSrc == 2'b01) ? alu_reg :
-        (PCSrc == 2'b10) ? PCJump  : alu_out;
+    assign F_PCjump   = {F_PC[ADDR_W-1:ADDR_W-4], D_addr, 2'b00};    // Jump target address for J-type instructions
+    assign F_PCnext   =
+        (D_jump)          ? F_PCjump   :
+        (M_take_branch) ? M_PCbranch : F_PCplus4;
 
 // PC update policy:
-//   - reset forces PC=0
-//   - when halt is asserted, PC stops updating (freezes at current value)
+//   - reset forces F_PC=0
+//   - when halt is asserted, F_PC stops updating (freezes at current value)
     always @(posedge clk) begin
         if (rst)
-            pc <= {ADDR_W{1'b0}};
+            F_PC <= {ADDR_W{1'b0}};
         else if (!halt)
-            pc <= pc_next;
+            F_PC <= F_PCnext;
     end
 //==============================================================================
 // ) Decode Register
 //==============================================================================
-    wire D_regWrite, D_memtoReg, D_memWrite, D_branch;
-    wire D_aluControl, D_aluSrc, D_regDst;
-    always @(posedge clk) begin
-        if(rst) begin
-            {D_regWrite, D_memtoReg, D_memWrite, D_branch, D_aluControl, D_aluSrc, D_regDst} <= 9'b0;
-        end else
+    reg [DATA_W-1:0] D_instr;
+    reg [ADDR_W-1:0] D_PCplus4;
 
+    always @(posedge clk) begin
+        if(rst || D_jump) begin     // Flush the decode stage on reset or jump by clearing the instruction and PC+4
+                                    // incurs a one-cycle bubble to prevent incorrect branch calculations
+            D_instr   <= {DATA_W{1'b0}};
+            D_PCplus4 <= {ADDR_W{1'b0}};
+        end else begin
+            D_instr   <= instr;
+            D_PCplus4 <= F_PCplus4;
+        end
     end
+
 //==============================================================================
 // ) Execute Register
 //==============================================================================
-    wire E_regWrite, E_memtoReg, E_memWrite, E_branch;
-    wire E_aluControl, E_aluSrc, E_regDst;
+    reg [ADDR_W-1:0] E_PCplus4;
+    reg [DATA_W-1:0] E_imm_ext;
+    reg [2:0]        E_aluControl;
+    reg              E_regWrite, E_memtoReg, E_memWrite, E_aluSrc, E_regDst;
+    reg              E_take_branch;
+
     always @(posedge clk) begin
         if(rst) begin
-            {E_regWrite, E_memtoReg, E_memWrite, E_branch, E_aluControl, E_aluSrc, E_regDst} <= 9'b0;
-        end else
-
+            E_regWrite    <= 1'b0;
+            E_memtoReg    <= 1'b0;
+            E_memWrite    <= 1'b0;
+            E_aluControl  <= 3'b000;
+            E_aluSrc      <= 1'b0;
+            E_regDst      <= 1'b0;
+            E_PCplus4     <= {ADDR_W{1'b0}};
+            E_imm_ext     <= {DATA_W{1'b0}};
+            E_take_branch <= 1'b0;
+        end else begin
+            E_regWrite    <= D_regWrite;
+            E_memtoReg    <= D_memtoReg;
+            E_memWrite    <= D_memWrite;
+            E_aluControl  <= D_aluControl;
+            E_aluSrc      <= D_aluSrc;
+            E_regDst      <= D_regDst;
+            E_PCplus4     <= D_PCplus4;
+            E_imm_ext     <= imm_ext;
+            E_take_branch <= D_take_branch;
+        end
     end
 //==============================================================================
 // ) Memory Register
 //==============================================================================
-    wire M_regWrite, M_memtoReg, M_memWrite, M_branch;
+    reg [ADDR_W-1:0] M_PCbranch;
+    reg M_regWrite, M_memtoReg, M_memWrite, M_take_branch;
     always @(posedge clk) begin
         if(rst) begin
-            {M_regWrite, M_memtoReg, M_memWrite, M_branch} <= 4'b0;
+            M_regWrite    <= 1'b0;
+            M_memtoReg    <= 1'b0;
+            M_memWrite    <= 1'b0;
+            M_PCbranch    <= {ADDR_W{1'b0}};
+            M_take_branch <= 1'b0;
+        end else begin
+            M_regWrite    <= E_regWrite;
+            M_memtoReg    <= E_memtoReg;
+            M_memWrite    <= E_memWrite;
+            M_PCbranch    <= E_PCplus4 + E_imm_ext[ADDR_W-1:0];
+            M_take_branch <= E_take_branch;
         end
-
-        else
-
     end
 //==============================================================================
 // ) Writeback Register
 //==============================================================================
-    wire W_regWrite, W_memtoReg;
+    reg W_regWrite, W_memtoReg;
     always @(posedge clk) begin
         if(rst) begin
-            {W_regWrite, W_memtoReg} <= 2'b0;
+            W_regWrite <= 1'b0;
+            W_memtoReg <= 1'b0;
+        end else begin
+            W_regWrite <= M_regWrite; 
+            W_memtoReg <= M_memtoReg;
         end
-
-        else
-
-    end
-
-
+    end 
 //==============================================================================
 // )
 //==============================================================================
-    wire [4:0] wa3 = (regDst) ? rd : rt;
+    wire [4:0] wa3 = (E_regDst) ? rd : rt;
 
     wire [DATA_W-1:0] rf_data_out1;     // Data from rs register
     wire [DATA_W-1:0] rf_data_out2;     // Data from rt register
@@ -97,7 +128,7 @@ module cpu_pp #(
     ) register_file (
         .clk        (clk),
         .rst        (rst),
-        .we3        (regWrite),
+        .we3        (W_regWrite),
         .rd1        (rs),           //A1
         .rd2        (rt),           //A2   
         .wa3        (wa3),          //A3
@@ -109,18 +140,18 @@ module cpu_pp #(
 // Writeback:
 //   - memtoReg=1 selects dm_data (load)
 //   - memtoReg=0 selects alu_out
-    assign rf_wdata = (memtoReg)? dm_data : alu_out;
+    assign rf_wdata = (W_memtoReg)? dm_data : alu_out;
 
 //==============================================================================
 // )
 //==============================================================================
-
+    wire [DATA_W-1:0] instr;        // Instruction fetched from instruction memory
     intr_mem #(
         .ADDR_W  (ADDR_W),
         .INSTR_W (INSTR_W),
         .DEPTH   (DEPTH)
     ) instr_mem (
-        .addr_in   (pc),
+        .addr_in   (F_PC),
         .instr_out (instr)
     );
 
@@ -132,31 +163,29 @@ module cpu_pp #(
 //   - For load : CPU releases bus (Z), memory drives it
     wire [DATA_W-1:0] dm_data;
     assign dm_data =
-        (memWrite) ? rf_data_out2 : {DATA_W{1'bz}};
+        (M_memWrite) ? rf_data_out2 : {DATA_W{1'bz}};
     
     data_mem #(
         .ADDR_W(ADDR_W)
     ) data_mem (
         .clk  (clk),
-        .we   (memWrite),
+        .we   (M_memWrite),
         .addr (alu_out),
         .data (dm_data)
     );
 //==============================================================================
 // ) Instruction fields + immediate extension
 //==============================================================================
-    reg [DATA_W-1:0] instr;       // Instruction register
-    
-    wire [5:0] opcode  = instr[DATA_W-1:26];
-    wire [4:0]  rs     = instr[25:21];
-    wire [4:0]  rt     = instr[20:16];
-    wire [4:0]  rd     = instr[15:11];
-    wire [4:0]  shamt  = instr[10:6];
-    wire [15:0] imm    = instr[15:0];
-    wire [25:0] addr   = instr[25:0];
+    wire [5:0]  D_opcode = D_instr[DATA_W-1:26];
+    wire [4:0]  D_rs     = D_instr[25:21];
+    wire [4:0]  D_rt     = D_instr[20:16];
+    wire [4:0]  D_rd     = D_instr[15:11];
+    wire [4:0]  D_shamt  = D_instr[10:6];
+    wire [15:0] D_imm    = D_instr[15:0];
+    wire [25:0] D_addr   = D_instr[25:0];
 
     wire [DATA_W-1:0] imm_ext =
-        imm_is_zext ? {16'b0, imm} : {{16{imm[15]}}, imm};
+        imm_is_zext ? {16'b0, D_imm} : {{16{D_imm[15]}}, D_imm};
 
 //==============================================================================
 // )
@@ -167,51 +196,43 @@ module cpu_pp #(
 // )
 //==============================================================================
 // Control signals generated by control unit based on opcode and function
-    wire       regWrite, regDst, aluSrc;
-    wire [2:0] aluControl;
-    wire       take_branch, memWrite, memtoReg, jump, is_shift, imm_is_zext;
+    wire       D_regWrite, D_regDst, D_aluSrc, D_memWrite, D_memtoReg, D_take_branch;
+    wire [2:0] D_aluControl;
+    wire       D_jump, is_shift, imm_is_zext;
 
     control_unit #(
         .INSTR_W        (INSTR_W)
     ) control_unit (
-        .instr          (instr),          // Current instruction
+        .instr          (D_instr),          // Current instruction
         .aluOut_is_zero (is_zero),        // ALU result is zero flag
         .signed_less    (signed_less),    // ALU signed less flag
-        .aluControl     (aluControl),     // ALU operation control
-        .regWrite       (regWrite),       // Enable register write
-        .regDst         (regDst),         // Select destination register (rd vs rt)
-        .aluSrc         (aluSrc),         // Select ALU source B (imm vs reg)
-        .take_branch    (take_branch),    // Branch condition met
-        .memWrite       (memWrite),       // Enable data memory write
-        .memtoReg       (memtoReg),       // Select writeback source (mem vs ALU)
-        .jump           (jump),           // Jump instruction
+        .aluControl     (D_aluControl),   // ALU operation control
+        .regWrite       (D_regWrite),     // Enable register write
+        .regDst         (D_regDst),       // Select destination register (rd vs rt)
+        .aluSrc         (D_aluSrc),       // Select ALU source B (imm vs reg)
+        .take_branch    (D_take_branch),    // Branch condition met
+        .memWrite       (D_memWrite),     // Enable data memory write
+        .memtoReg       (D_memtoReg),     // Select writeback source (mem vs ALU)
+        .jump           (D_jump),           // Jump instruction
         .is_shift       (is_shift),       // Shift operation flag
         .imm_is_zext    (imm_is_zext),    // Zero-extend immediate flag
         .halt           (halt)            // Halt signal
     );
 
-
 //==============================================================================
 // 6) ALU operand selection + ALU execution
 //==============================================================================
 // ALU operand A:
-//   - aluSrcA=1 selects PC
-//   - aluSrcA=0 selects rs data
-    wire [DATA_W-1:0] alu_a = 
-        (aluSrcA == 0) ? pc                          :       
-        (is_shift)     ? {{(DATA_W-5){1'b0}}, shamt} : 
-                         rf_regA;
+    //   - for shifts: use shamt (zero-extended)
+    //   - otherwise: use rs data
+    wire [DATA_W-1:0] alu_a =
+        (is_shift) ? {27'b0, D_shamt} : rf_data_out1;
 
-// ALU operand B:
-//   - aluSrcB=0 selects rt data
-//   - aluSrcB=1 selects 4
-//   - aluSrcB=2 selects imm_ext
-//   - aluSrcB=3 selects imm_ext << 2
+    // ALU operand B:
+    //   - E_aluSrc=1 selects imm_ext
+    //   - E_aluSrc=0 selects rt data
     wire [DATA_W-1:0] alu_b =
-        (aluSrcB == 2'b00) ? rf_regB                    :
-        (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4} :
-        (aluSrcB == 2'b10) ? imm_ext                    : 
-                             (imm_ext << 2); // (aluSrcB == 2'b11)
+        (E_aluSrc) ? imm_ext : rf_data_out2;
 
     wire [DATA_W-1:0] alu_out;
     wire              is_zero;
@@ -220,12 +241,11 @@ module cpu_pp #(
     alu #(
         .DATA_W(DATA_W)
     ) alu (
-        .aluControl (aluControl),
+        .aluControl (E_aluControl),
         .in_a       (alu_a),
         .in_b       (alu_b),
         .out        (alu_out),
         .is_zero    (is_zero),
         .signed_less(signed_less)
     );
-
 endmodule

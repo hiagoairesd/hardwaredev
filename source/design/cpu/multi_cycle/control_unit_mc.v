@@ -108,7 +108,19 @@ module control_unit_mc #(
 // 6) Output generation (3rd block): combinational logic to generate control signals based on current state
 //=================================================================================
     always @* begin
-        {memToReg, regDst, IorD, aluSrcA, aluSrcB, PCSrc, IRWrite, memWrite, PCWrite, regWrite, aluOp, branch, halt} = 16'b0000000000000000;
+        memToReg = 1'b0;
+        regDst   = 1'b0;
+        IorD     = 1'b0;
+        aluSrcA  = 1'b0;
+        aluSrcB  = 2'b00;
+        PCSrc    = 2'b00;
+        IRWrite  = 1'b0;
+        memWrite = 1'b0;
+        PCWrite  = 1'b0;
+        regWrite = 1'b0;
+        aluOp    = 2'b00;
+        branch   = 1'b0;
+        halt     = 1'b0;
         case(state)
         //------------------------------------------------------------------------------
         // (S0) Fetch state: fetch instruction from memory
