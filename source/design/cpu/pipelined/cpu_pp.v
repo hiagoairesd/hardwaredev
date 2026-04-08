@@ -11,14 +11,14 @@ module cpu_pp #(
 //==============================================================================
 // 1) PC Logic (Fetch stage)
 //==============================================================================
-    reg  [ADDR_W-1:0] F_PC;                // Program counter is byte-indexed (ADDR_W bits)
-    wire [ADDR_W-1:0] F_PCnext;              // Next PC value after selection logic
-    wire [ADDR_W-1:0] F_PCjump;              // Jump target address for J-type instructions
+    reg  [ADDR_W-1:0] F_PC;                     // Program counter is byte-indexed (ADDR_W bits)
+    wire [ADDR_W-1:0] F_PCnext;                 // Next PC value after selection logic
+    wire [ADDR_W-1:0] F_PCjump;                 // Jump target address for J-type instructions
     wire [ADDR_W-1:0] F_PCplus4 = F_PC + 4;     // F_PC + 4 for next sequential instruction
 
     assign F_PCjump   = {F_PC[ADDR_W-1:ADDR_W-4], D_addr, 2'b00};    // Jump target address for J-type instructions
     assign F_PCnext   =
-        (D_jump)          ? F_PCjump   :
+        (D_jump)        ? F_PCjump   :
         (M_take_branch) ? M_PCbranch : F_PCplus4;
 
 // PC update policy:
@@ -67,6 +67,10 @@ module cpu_pp #(
             E_PCplus4     <= {ADDR_W{1'b0}};
             E_imm_ext     <= {DATA_W{1'b0}};
             E_take_branch <= 1'b0;
+            E_rt          <= {5{1'b0}};
+            E_rd          <= {5{1'b0}};
+            E_aluA       <= {DATA_W{1'b0}};
+            E_aluB       <= {DATA_W{1'b0}};
         end else begin
             E_regWrite    <= D_regWrite;
             E_memtoReg    <= D_memtoReg;
@@ -77,6 +81,16 @@ module cpu_pp #(
             E_PCplus4     <= D_PCplus4;
             E_imm_ext     <= imm_ext;
             E_take_branch <= D_take_branch;
+            E_rt          <= D_rt;
+            E_rd          <= D_rd;
+        // ALU operand A:
+        //   - for shifts: use shamt (zero-extended)
+        //   - otherwise: use rs data
+            E_aluA <= (is_shift) ? {27'b0, D_shamt} : rf_out1;
+        // ALU operand B:
+        //   - E_aluSrc=1 selects imm_ext
+        //   - E_aluSrc=0 selects rt data
+            E_aluB <= (E_aluSrc) ? imm_ext : rf_out2;
         end
     end
 //==============================================================================
@@ -84,6 +98,7 @@ module cpu_pp #(
 //==============================================================================
     reg [ADDR_W-1:0] M_PCbranch;
     reg M_regWrite, M_memtoReg, M_memWrite, M_take_branch;
+    reg [4:0] M_wa3;
     always @(posedge clk) begin
         if(rst) begin
             M_regWrite    <= 1'b0;
@@ -91,35 +106,40 @@ module cpu_pp #(
             M_memWrite    <= 1'b0;
             M_PCbranch    <= {ADDR_W{1'b0}};
             M_take_branch <= 1'b0;
+            M_wa3         <= {5{1'b0}};
         end else begin
             M_regWrite    <= E_regWrite;
             M_memtoReg    <= E_memtoReg;
             M_memWrite    <= E_memWrite;
             M_PCbranch    <= E_PCplus4 + E_imm_ext[ADDR_W-1:0];
             M_take_branch <= E_take_branch;
+            M_wa3         <= E_wa3;
         end
     end
 //==============================================================================
 // ) Writeback Register
 //==============================================================================
     reg W_regWrite, W_memtoReg;
+    reg [4:0] W_wa3;
     always @(posedge clk) begin
         if(rst) begin
             W_regWrite <= 1'b0;
             W_memtoReg <= 1'b0;
+            W_wa3      <= {5{1'b0}};
         end else begin
             W_regWrite <= M_regWrite; 
             W_memtoReg <= M_memtoReg;
+            W_wa3      <= M_wa3;
         end
     end 
 //==============================================================================
 // )
 //==============================================================================
-    wire [4:0] wa3 = (E_regDst) ? rd : rt;
+    wire [4:0] E_wa3 = (E_regDst) ? E_rd : E_rt;    // Register File write Address (A3)
 
-    wire [DATA_W-1:0] rf_data_out1;     // Data from rs register
-    wire [DATA_W-1:0] rf_data_out2;     // Data from rt register
-    wire [DATA_W-1:0] rf_wdata;
+    wire [DATA_W-1:0] rf_out1;     // Data from D_rs register
+    wire [DATA_W-1:0] rf_out2;     // Data from D_rt register
+    wire [DATA_W-1:0] rf_in;
     
     register_file #(
         .ADDR_W (ADDR_W),
@@ -129,18 +149,18 @@ module cpu_pp #(
         .clk        (clk),
         .rst        (rst),
         .we3        (W_regWrite),
-        .rd1        (rs),           //A1
-        .rd2        (rt),           //A2   
-        .wa3        (wa3),          //A3
-        .data_in    (rf_wdata),
-        .data_out1  (rf_data_out1),
-        .data_out2  (rf_data_out2)
+        .rd1        (D_rs),         //A1
+        .rd2        (D_rt),         //A2   
+        .wa3        (W_wa3),        //A3
+        .data_in    (rf_in),
+        .data_out1  (rf_out1),
+        .data_out2  (rf_out2)
     );
 
 // Writeback:
 //   - memtoReg=1 selects dm_data (load)
-//   - memtoReg=0 selects alu_out
-    assign rf_wdata = (W_memtoReg)? dm_data : alu_out;
+//   - memtoReg=0 selects aluOut
+    assign rf_in = (W_memtoReg)? dm_data : aluOut;
 
 //==============================================================================
 // )
@@ -159,18 +179,18 @@ module cpu_pp #(
 // )
 //==============================================================================
 // Tri-state data bus model:
-//   - For store: CPU drives rf_data_out2 onto bus
+//   - For store: CPU drives rf_out2 onto bus
 //   - For load : CPU releases bus (Z), memory drives it
     wire [DATA_W-1:0] dm_data;
     assign dm_data =
-        (M_memWrite) ? rf_data_out2 : {DATA_W{1'bz}};
+        (M_memWrite) ? rf_out2 : {DATA_W{1'bz}};
     
     data_mem #(
         .ADDR_W(ADDR_W)
     ) data_mem (
         .clk  (clk),
         .we   (M_memWrite),
-        .addr (alu_out),
+        .addr (aluOut),
         .data (dm_data)
     );
 //==============================================================================
@@ -222,19 +242,8 @@ module cpu_pp #(
 //==============================================================================
 // 6) ALU operand selection + ALU execution
 //==============================================================================
-// ALU operand A:
-    //   - for shifts: use shamt (zero-extended)
-    //   - otherwise: use rs data
-    wire [DATA_W-1:0] alu_a =
-        (is_shift) ? {27'b0, D_shamt} : rf_data_out1;
-
-    // ALU operand B:
-    //   - E_aluSrc=1 selects imm_ext
-    //   - E_aluSrc=0 selects rt data
-    wire [DATA_W-1:0] alu_b =
-        (E_aluSrc) ? imm_ext : rf_data_out2;
-
-    wire [DATA_W-1:0] alu_out;
+    reg  [DATA_W-1:0] E_aluA, E_aluB;
+    wire [DATA_W-1:0] aluOut;
     wire              is_zero;
     wire              signed_less;
 
@@ -242,9 +251,9 @@ module cpu_pp #(
         .DATA_W(DATA_W)
     ) alu (
         .aluControl (E_aluControl),
-        .in_a       (alu_a),
-        .in_b       (alu_b),
-        .out        (alu_out),
+        .in_a       (E_aluA),
+        .in_b       (E_aluB),
+        .out        (aluOut),
         .is_zero    (is_zero),
         .signed_less(signed_less)
     );
