@@ -5,7 +5,7 @@
 The single-cycle CPU testbench (`cpu_sc_tb.sv`) provides a comprehensive test suite for validating the single-cycle MIPS-like processor design. The testbench implements 15 distinct test cases, ranging from basic register writes and memory access to complex programs such as Fibonacci sequences and overflow boundary conditions.
 
 **Key Resources:**
-- **RTL Design:** `source/design/cpu/single_cycle/`
+- **RTL Design:** `source/design/cpu/single_cycle/` (top-level integration) and reused common modules in `source/design/cpu/common/`
 - **Testbench:** `source/verif/cpu/single_cycle/cpu_sc_tb.sv`
 - **Assembly Programs:** `source/verif/cpu/single_cycle/assembly/`
 - **Simulation Script:** `simu/simulate`

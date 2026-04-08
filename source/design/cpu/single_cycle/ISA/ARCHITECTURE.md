@@ -69,7 +69,8 @@ This processor does not implement hardware stack support.
 - **Width**: 32-bit words
 - **Addressing**: word-indexed by `alu_out[ADDR_W-1:0]`
 - **Write policy**: synchronous write on positive edge when `memWrite = 1`
-- **Read policy**: combinational read via tri-state shared data bus
+- **Read policy**: combinational read via a dedicated output bus (`data_out`)
+- **Interface style**: single-ported memory with separate `data_in` and `data_out` buses
 - **Initialization**: all words initialized to zero
 - **Memory hierarchy role**: acts as the main data memory (read/write data space, RAM-like behavior in this model)
 
@@ -217,12 +218,12 @@ For shift instructions (`SLL`, `SRL`):
 - ALU input B receives register data (`rt`)
 
 ## Memory Interface Design
-The data memory interface uses a shared tri-state data bus (`dm_data`):
-- **Store (`SW`)**: CPU drives `dm_data` with `rf_data_out2`
-- **Load (`LW`)**: CPU releases bus (`Z`), and memory drives `dm_data`
+The data memory interface is single-ported and uses separate input/output buses:
+- **Store (`SW`)**: CPU sends `rf_data_out2` to the memory `data_in` port
+- **Load (`LW`)**: memory returns the selected word on `data_out` (connected internally as `dm_out`)
 
 Write-back selection:
-- If `memtoReg = 1`, register file receives memory data (`dm_data`)
+- If `memtoReg = 1`, register file receives memory data (`dm_out`)
 - If `memtoReg = 0`, register file receives `alu_out`
 
 ## PC Update Logic

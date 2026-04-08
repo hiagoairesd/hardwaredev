@@ -19,9 +19,9 @@
 //       * output 'halted' mirrors 'halt'
 //
 // NOTES / DESIGN CHOICES
-//   - 'dm_data' is modeled as a tri-state bus:
-//       * when memWrite=1, CPU drives dm_data with rf_data_out2 (store data)
-//       * otherwise dm_data = Z (data_mem is expected to drive for loads)
+//   - Data memory is single-ported and uses separate data buses:
+//       * 'data_in' receives store data from rf_data_out2
+//       * 'data_out' is exposed internally as 'dm_out' for loads/writeback
 //   - Shift instructions:
 //       * ALU input A uses shamt (zero-extended) when instruction is shift
 //       * ALU input B is selected by aluSrc (imm_ext vs rf_data_out2)
@@ -30,7 +30,7 @@
 //   - Internal signals are named to be waveform-friendly:
 //       pc, pc_next, instr, opcode, rs/rt/rd, imm_ext
 //       regWrite, memWrite, memtoReg, jump, take_branch
-//       wa3, rf_wdata, alu_out, is_zero, dm_data
+//       wa3, rf_wdata, alu_out, is_zero, dm_out
 //==============================================================================
 
 module cpu_sc #(
@@ -151,9 +151,9 @@ module cpu_sc #(
         .data_out2  (rf_data_out2)
     );
     // Writeback:
-    //   - memtoReg=1 selects dm_data (load)
+    //   - memtoReg=1 selects dm_out (load)
     //   - memtoReg=0 selects alu_out
-    assign rf_wdata = (memtoReg)? dm_data : alu_out;
+    assign rf_wdata = (memtoReg)? dm_out : alu_out;
 
     //==============================================================================
     // 7) ALU operand selection + ALU execution
@@ -185,23 +185,18 @@ module cpu_sc #(
     );
 
     //==============================================================================
-    // 8) Data memory interface + writeback mux
+    // 8) Data memory interface
     //==============================================================================
-
-    // Tri-state data bus model:
-    //   - For store: CPU drives rf_data_out2 onto bus
-    //   - For load : CPU releases bus (Z), memory drives it
-    wire [DATA_W-1:0] dm_data;
-    assign dm_data =
-        (memWrite) ? rf_data_out2 : {DATA_W{1'bz}};
+    wire [DATA_W-1:0] dm_out;
 
     data_mem #(
         .ADDR_W(ADDR_W)
     ) data_mem (
-        .clk  (clk),
-        .we   (memWrite),
-        .addr (alu_out[ADDR_W-1:0]),
-        .data (dm_data)
+        .clk     (clk),
+        .we      (memWrite),
+        .addr    (alu_out[ADDR_W-1:0]),
+        .data_in (rf_data_out2),           // Store data comes from rt register
+        .data_out(dm_out)                  // Load data goes to writeback mux
     );
     //==============================================================================
     // 9) PC next logic (pc_plus1 / jump selection)

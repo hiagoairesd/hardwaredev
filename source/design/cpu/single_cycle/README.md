@@ -11,11 +11,11 @@ Folder: [source/design/cpu/single_cycle](.)
 
 - `cpu_sc.v`: single-cycle CPU top-level integration
 - `instr_mem.v`: instruction memory
-- `data_mem.v`: data memory
 - Reused common blocks from [source/design/cpu/common](../common):
   - `alu.v`
   - `control_unit.v`: shared single-cycle instruction decode and control logic
   - `register_file.v`: shared register bank (`DATA_W` is parameterized; the current architectural organization remains 32 registers with 5-bit register addresses)
+  - `data_mem.v`: shared single-ported data memory with separate `data_in` and `data_out` buses
 
 ## Architecture Document
 
