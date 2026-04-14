@@ -307,9 +307,7 @@ module cpu_pp #(
         .aluControl (E_aluControl),
         .in_a       (E_aluA),
         .in_b       (E_aluB),
-        .out        (
-            
-        ),
+        .out        (E_aluOut),
         .is_zero    (E_aluOut_is_zero),
         .signed_less(E_signed_less)
     );
