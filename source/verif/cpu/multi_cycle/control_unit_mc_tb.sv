@@ -1,4 +1,4 @@
-module control_unit_tb();
+module control_unit_mc_tb();
     localparam INSTR_W = 32;
     localparam OP_RTYPE = 6'b000000;
     localparam OP_LW    = 6'b100011;
@@ -155,7 +155,7 @@ module control_unit_tb();
 
     initial begin
         $dumpfile("control_unit.vcd");
-        $dumpvars(0, control_unit_tb);
+        $dumpvars(0, control_unit_mc_tb);
     end
 
     // -----------------------------------------------------------------------
@@ -337,17 +337,17 @@ module control_unit_tb();
         step; expect_fetch(); print_ok();
         rst = 1'b0;
 
-        print_section("LOAD/STORE OPERATIONS");
+        print_section("LOAD/STORE INSTRUCTIONS");
         test_lw();
         test_sw();
 
-        print_section("R-TYPE OPERATIONS");
+        print_section("R-TYPE INSTRUCTIONS");
         test_add();
 
         print_section("SHIFT INSTRUCTIONS");
         test_sll();
 
-        print_section("IMMEDIATE OPERATIONS");
+        print_section("IMMEDIATE INSTRUCTIONS");
         test_ori();
 
         print_section("BRANCH INSTRUCTIONS");
