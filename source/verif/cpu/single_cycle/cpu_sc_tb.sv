@@ -151,12 +151,12 @@ module cpu_sc_tb();
                 // Architectural register writeback
                 if (DUT.regWrite) begin
                     $display("t=%0t | REGWRITE | R%0d <= %08h",
-                             $time, DUT.wa3, DUT.rf_wdata);
+                             $time, DUT.wa3, DUT.RF_wdata);
                 end
                 // Architectural memory write (store word)
                 if (DUT.memWrite) begin
                     $display("t=%0t | MEMWRITE | mem[%0d] <= %08h",
-                             $time, DUT.alu_out[ADDR_W-1:0], DUT.data_mem.data_in);
+                             $time, DUT.ALU_out[ADDR_W-1:0], DUT.data_mem.data_in);
                 end
                 // Control-flow decisions
                 if (DUT.take_branch) begin
