@@ -2,11 +2,11 @@
 
 ## Overview
 
-The single-cycle CPU testbench (`cpu_sc_tb.sv`) provides a comprehensive test suite for validating the single-cycle MIPS-like processor design. The testbench implements 15 distinct test cases, ranging from basic register writes and memory access to complex programs such as Fibonacci sequences and overflow boundary conditions.
+The single-cycle CPU testbench (`sc_cpu_tb.sv`) provides a comprehensive test suite for validating the single-cycle MIPS-like processor design. The testbench implements 15 distinct test cases, ranging from basic register writes and memory access to complex programs such as Fibonacci sequences and overflow boundary conditions.
 
 **Key Resources:**
 - **RTL Design:** `source/design/cpu/single_cycle/` (top-level integration) and reused common modules in `source/design/cpu/common/`
-- **Testbench:** `source/verif/cpu/single_cycle/cpu_sc_tb.sv`
+- **Testbench:** `source/verif/cpu/single_cycle/sc_cpu_tb.sv`
 - **Assembly Programs:** `source/verif/cpu/single_cycle/assembly/`
 - **Simulation Script:** `simu/simulate`
 
@@ -21,7 +21,7 @@ The single-cycle CPU testbench (`cpu_sc_tb.sv`) provides a comprehensive test su
 
 ```bash
 cd simu/
-./simulate cpu_sc +test=<test_id> [+trace] [+trace_w]
+./simulate sc_cpu +test=<test_id> [+trace] [+trace_w]
 ```
 
 ### Test Selection Options
@@ -48,9 +48,9 @@ cd simu/
 ### Trace Options
 
 ```bash
-./simulate cpu_sc +test=1                      # Run test 1, no trace
-./simulate cpu_sc +test=1 +trace_w             # Detailed trace (reg writes, branches)
-./simulate cpu_sc +test=1 +trace               # Lightweight trace (PC, instr) + forces trace_w
+./simulate sc_cpu +test=1                      # Run test 1, no trace
+./simulate sc_cpu +test=1 +trace_w             # Detailed trace (reg writes, branches)
+./simulate sc_cpu +test=1 +trace               # Lightweight trace (PC, instr) + forces trace_w
 ```
 
 ## Test Suite Details
@@ -382,11 +382,11 @@ Programs are stored as 32-bit hex values, one instruction per line, and loaded i
 - R-type: `[opcode:6][rs:5][rt:5][rd:5][shamt:5][funct:6]`
 - J-type: `[opcode:6][addr:26]`
 
-> **Memory addressing note:** data memory in `cpu_sc` is word-indexed. `sw rt, N(r0)` writes to `data_mem[N]`, not byte address `N*4`.
+> **Memory addressing note:** data memory in `sc_cpu` is word-indexed. `sw rt, N(r0)` writes to `data_mem[N]`, not byte address `N*4`.
 
 ## Expected Test Results
 
-**Default run (`./simulate cpu_sc`)**
+**Default run (`./simulate sc_cpu`)**
 
 ```
 ----------------------- RUNNING INTEGRATION TESTS [default] ---------------
@@ -417,7 +417,7 @@ Total: 15/15 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_sc +test=<failed_id> +trace_w 2>&1 | tail -50
+./simulate sc_cpu +test=<failed_id> +trace_w 2>&1 | tail -50
 # Look for repeating PC values or impossible branch targets
 ```
 
@@ -431,7 +431,7 @@ Total: 15/15 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_sc +test=<failed_id> +trace_w | grep REGWRITE
+./simulate sc_cpu +test=<failed_id> +trace_w | grep REGWRITE
 # Verify correct register index and data value
 ```
 
@@ -445,7 +445,7 @@ Total: 15/15 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_sc +test=<failed_id> +trace_w | grep MEMWRITE
+./simulate sc_cpu +test=<failed_id> +trace_w | grep MEMWRITE
 # Verify address (mem index) matches expected word index
 ```
 
@@ -459,7 +459,7 @@ Total: 15/15 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_sc +test=<failed_id> +trace_w | grep BRANCH
+./simulate sc_cpu +test=<failed_id> +trace_w | grep BRANCH
 # Verify branch direction matches expected taken/not-taken
 ```
 
@@ -471,7 +471,7 @@ hardwaredev/
 │   ├── verif/
 │   │   ├── cpu/
 │   │   │   ├── single_cycle/
-│   │   │   │   ├── cpu_sc_tb.sv          # Main testbench
+│   │   │   │   ├── sc_cpu_tb.sv          # Main testbench
 │   │   │   │   ├── README.md              # This documentation
 │   │   │   │   ├── assembly/              # Single-cycle test programs
 │   │   │   │   │   ├── regs.hex           # Test 1: basic register writes
@@ -499,14 +499,14 @@ hardwaredev/
 ### Run specific test
 ```bash
 cd simu
-./simulate cpu_sc +test=6
+./simulate sc_cpu +test=6
 echo $?  # Exit code 0 = PASS, non-zero = FAIL
 ```
 
 ### Run default mode (integration only)
 ```bash
 cd simu
-./simulate cpu_sc
+./simulate sc_cpu
 echo $?  # Exit code 0 = PASS, non-zero = FAIL
 ```
 
@@ -515,14 +515,14 @@ echo $?  # Exit code 0 = PASS, non-zero = FAIL
 cd simu
 for i in {1..15}; do
   echo "Running test $i"
-  ./simulate cpu_sc +test=$i || exit 1
+  ./simulate sc_cpu +test=$i || exit 1
 done
 ```
 
 ### Parse results for CI
 ```bash
 cd simu
-for i in {1..15}; do ./simulate cpu_sc +test=$i; done 2>&1 | grep -c "TESTS PASSED"
+for i in {1..15}; do ./simulate sc_cpu +test=$i; done 2>&1 | grep -c "TESTS PASSED"
 # Expected: 15 for full pass
 ```
 

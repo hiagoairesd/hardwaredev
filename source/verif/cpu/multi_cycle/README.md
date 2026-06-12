@@ -2,11 +2,11 @@
 
 ## Overview
 
-The multi-cycle CPU testbench (`cpu_mc_tb.sv`) provides a comprehensive test suite for validating the multi-cycle MIPS-like processor design. The testbench implements 20 distinct test cases, ranging from basic instruction validation to complex integration scenarios with loops, branches, and interleaved memory access.
+The multi-cycle CPU testbench (`mc_cpu_tb.sv`) provides a comprehensive test suite for validating the multi-cycle MIPS-like processor design. The testbench implements 20 distinct test cases, ranging from basic instruction validation to complex integration scenarios with loops, branches, and interleaved memory access.
 
 **Key Resources:**
 - **RTL Design:** `source/design/cpu/multi_cycle/`
-- **Testbench:** `source/verif/cpu/multi_cycle/cpu_mc_tb.sv`
+- **Testbench:** `source/verif/cpu/multi_cycle/mc_cpu_tb.sv`
 - **Assembly Programs:** `source/verif/cpu/multi_cycle/assembly/`
 - **Simulation Script:** `simu/simulate`
 
@@ -21,7 +21,7 @@ The multi-cycle CPU testbench (`cpu_mc_tb.sv`) provides a comprehensive test sui
 
 ```bash
 cd simu/
-./simulate cpu_mc +test=<test_id> [+trace] [+trace_w] [+trace_m]
+./simulate mc_cpu +test=<test_id> [+trace] [+trace_w] [+trace_m]
 ```
 
 ### Test Selection Options
@@ -38,11 +38,11 @@ cd simu/
 ### Trace Options
 
 ```bash
-./simulate cpu_mc +test=1                      # Run test 1, no trace
-./simulate cpu_mc +test=1 +trace_w             # Detailed trace (reg writes, branches)
-./simulate cpu_mc +test=1 +trace               # Lightweight trace (PC, instr)
-./simulate cpu_mc +test=1 +trace_m             # Microarchitectural trace (ALU, regfile)
-./simulate cpu_mc +test=1 +trace_w +dump=1     # Trace + VCD dump
+./simulate mc_cpu +test=1                      # Run test 1, no trace
+./simulate mc_cpu +test=1 +trace_w             # Detailed trace (reg writes, branches)
+./simulate mc_cpu +test=1 +trace               # Lightweight trace (PC, instr)
+./simulate mc_cpu +test=1 +trace_m             # Microarchitectural trace (ALU, regfile)
+./simulate mc_cpu +test=1 +trace_w +dump=1     # Trace + VCD dump
 ```
 
 ## Test Suite Details
@@ -336,7 +336,7 @@ Programs are stored as 32-bit hex values, one per line (no line limits):
 
 ## Expected Test Results
 
-**Default run (`./simulate cpu_mc`)**
+**Default run (`./simulate mc_cpu`)**
 
 ```
 ----------------------- RUNNING INTEGRATION TESTS [20/default] ---------------
@@ -367,7 +367,7 @@ Total: 20/20 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_mc +test=<failed_id> +trace_w 2>&1 | tail -50
+./simulate mc_cpu +test=<failed_id> +trace_w 2>&1 | tail -50
 # Look for repeating instruction patterns or impossible PC values
 ```
 
@@ -381,7 +381,7 @@ Total: 20/20 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_mc +test=<failed_id> +trace_w | grep REGWRITE
+./simulate mc_cpu +test=<failed_id> +trace_w | grep REGWRITE
 # Verify correct register index (wa3) and data value
 ```
 
@@ -395,7 +395,7 @@ Total: 20/20 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_mc +test=<failed_id> +trace_w | grep MEMWRITE
+./simulate mc_cpu +test=<failed_id> +trace_w | grep MEMWRITE
 # Verify address calculation: base + offset
 ```
 
@@ -409,7 +409,7 @@ Total: 20/20 PASS
 
 **Debug steps:**
 ```bash
-./simulate cpu_mc +test=<failed_id> +trace_w | grep BRANCH
+./simulate mc_cpu +test=<failed_id> +trace_w | grep BRANCH
 # Verify condition (Rs==Rt for BEQ, Rs<Rt for BLT, etc.)
 ```
 
@@ -421,7 +421,7 @@ hardwaredev/
 │   ├── verif/
 │   │   ├── cpu/
 │   │   │   ├── multi_cycle/
-│   │   │   │   ├── cpu_mc_tb.sv          # Main testbench
+│   │   │   │   ├── mc_cpu_tb.sv          # Main testbench
 │   │   │   │   ├── README.md              # This documentation
 │   │   │   │   ├── assembly/              # Multi-cycle test programs
 │   │   │   │   │   ├── regs.hex           # Test 1
@@ -455,14 +455,14 @@ hardwaredev/
 ### Run specific test
 ```bash
 cd simu
-./simulate cpu_mc +test=20
+./simulate mc_cpu +test=20
 echo $?  # Exit code 0 = PASS, non-zero = FAIL
 ```
 
 ### Run default mode (integration only)
 ```bash
 cd simu
-./simulate cpu_mc
+./simulate mc_cpu
 echo $?  # Exit code 0 = PASS, non-zero = FAIL
 ```
 
@@ -471,14 +471,14 @@ echo $?  # Exit code 0 = PASS, non-zero = FAIL
 cd simu
 for i in {1..20}; do
   echo "Running test $i"
-  ./simulate cpu_mc +test=$i || exit 1
+  ./simulate mc_cpu +test=$i || exit 1
 done
 ```
 
 ### Parse results for CI
 ```bash
 cd simu
-for i in {1..20}; do ./simulate cpu_mc +test=$i; done 2>&1 | grep -c "TESTS PASSED"
+for i in {1..20}; do ./simulate mc_cpu +test=$i; done 2>&1 | grep -c "TESTS PASSED"
 # Expected: 20 for full pass
 ```
 

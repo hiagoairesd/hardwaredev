@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 //==============================================================================
-// cpu_mc_tb.sv
+// mc_cpu_tb.sv
 //
-// Testbench for: cpu_mc (MIPS-like multi-cycle CPU)
+// Testbench for: mc_cpu (MIPS-like multi-cycle CPU)
 //
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
@@ -48,7 +48,7 @@
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
-module cpu_mc_tb();
+module mc_cpu_tb();
 
     //==============================================================================
     // 1) Parameters / Localparams / TB defaults
@@ -84,7 +84,7 @@ module cpu_mc_tb();
     // 3) DUT instantiation
     //==============================================================================
 
-    cpu_mc #(
+    mc_cpu #(
         .DATA_W(DATA_W),
         .ADDR_W(ADDR_W)
     ) DUT (
@@ -109,8 +109,8 @@ module cpu_mc_tb();
 
     // Always dump waveforms for debug. If you prefer, guard with +dump.
     initial begin
-        $dumpfile("cpu_mc.vcd");
-        $dumpvars(0, cpu_mc_tb);
+        $dumpfile("mc_cpu.vcd");
+        $dumpvars(0, mc_cpu_tb);
     end
 
     //==============================================================================

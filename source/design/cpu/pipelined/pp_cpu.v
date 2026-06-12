@@ -1,4 +1,4 @@
-module cpu_pp #(
+module pp_cpu #(
     parameter ADDR_W = 32,
     parameter DATA_W = 32,
     parameter DEPTH  = 256

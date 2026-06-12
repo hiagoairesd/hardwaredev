@@ -1,4 +1,4 @@
-module control_unit_mc_tb();
+module mc_control_unit_tb();
     localparam INSTR_W = 32;
     localparam OP_RTYPE = 6'b000000;
     localparam OP_LW    = 6'b100011;
@@ -130,7 +130,7 @@ module control_unit_mc_tb();
         end
     endtask
 
-    control_unit_mc #(
+    mc_control_unit #(
         .INSTR_W(INSTR_W)
     ) DUT (
         .clk            (clk),
@@ -162,7 +162,7 @@ module control_unit_mc_tb();
 
     initial begin
         $dumpfile("control_unit.vcd");
-        $dumpvars(0, control_unit_mc_tb);
+        $dumpvars(0, mc_control_unit_tb);
     end
 
     // -----------------------------------------------------------------------

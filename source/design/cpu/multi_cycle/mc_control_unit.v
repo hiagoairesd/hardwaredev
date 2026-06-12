@@ -1,4 +1,4 @@
-module control_unit_mc #(
+module mc_control_unit #(
     parameter INSTR_W = 32
 ) (
     input wire              clk,

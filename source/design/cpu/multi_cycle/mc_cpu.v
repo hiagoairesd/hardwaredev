@@ -1,4 +1,4 @@
-module cpu_mc #(
+module mc_cpu #(
     parameter DATA_W = 32,
     parameter ADDR_W = 32,
     parameter MEM_DEPTH = 256,
@@ -107,7 +107,7 @@ module cpu_mc #(
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite;
 
-    control_unit_mc #(
+    mc_control_unit #(
         .INSTR_W(DATA_W)
     ) control_unit (
         .clk            (clk),
