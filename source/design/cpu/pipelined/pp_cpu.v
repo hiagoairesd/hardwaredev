@@ -16,10 +16,6 @@ module pp_cpu #(
     wire is_beq = (opcode == OP_BEQ);
     wire is_bne = (opcode == OP_BNE);
     wire is_blt = (opcode == OP_BLT);
-
-
-
-
 //==============================================================================
 // 2) Variables declaration
 //==============================================================================
@@ -80,6 +76,11 @@ module pp_cpu #(
     reg               W_regWrite, W_memtoReg;
     wire [DATA_W-1:0] W_rf_in;
 
+    // ---------------------------------------------------------
+    // HAZARD DETECTION UNIT
+    // ---------------------------------------------------------
+    wire [1:0] BE_forward, AE_forward;
+    wire       stall;
 //==============================================================================
 // 3) Assignments and always blocks
 //==============================================================================
@@ -327,4 +328,23 @@ module pp_cpu #(
         .is_zero    (E_aluOut_is_zero),
         .signed_less(E_signed_less)
     );
+
+    //------------------------------------------------------------------------------
+    // Hazard unit
+    //------------------------------------------------------------------------------
+
+    hazard_unit#(
+        .
+    ) hazard_unit(
+        .M_regWrite (M_regWrite),
+        .W_regWrite (W_regWrite),
+        .E_rs       (E_rs),
+        .E_rt       (E_rt),
+        .M_wa3      (M_wa3),
+        .W_wa3      (W_wa3),
+        .BE_forward (BE_forward),
+        .AE_forward (AE_forward),
+        .stall      (stall)
+    );
+
 endmodule
