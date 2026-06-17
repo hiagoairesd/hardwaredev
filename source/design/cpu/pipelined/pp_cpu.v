@@ -51,11 +51,12 @@ module pp_cpu #(
     // EXECUTE STAGE
     // ---------------------------------------------------------
     reg  [ADDR_W-1:0] E_PCplus4, E_PCbranch;
-    reg  [DATA_W-1:0] E_imm_ext, E_rf_out1, E_rf_out2;
+    reg  [DATA_W-1:0] E_imm_ext, E_rf_out1, E_rf_out2, E_intermediateA, E_intermediateB;
     reg  [4:0]        E_rt, E_rd, E_shamt, E_wa3;
     reg  [2:0]        E_aluControl;
     reg               E_regWrite, E_memtoReg, E_memWrite, E_aluSrc, E_regDst;
     reg               E_is_shift, E_is_beq, E_is_bne, E_is_blt;
+    wire [1:0]        E_forwardA, E_forwardB;
     wire [DATA_W-1:0] E_aluA, E_aluB, E_aluOut;
     wire              E_signed_less, E_aluOut_is_zero, E_take_branch;
 
@@ -63,7 +64,7 @@ module pp_cpu #(
     // MEMORY STAGE
     // ---------------------------------------------------------
     reg  [ADDR_W-1:0] M_PCbranch;
-    reg  [DATA_W-1:0] M_aluOut, M_rf_out2;
+    reg  [DATA_W-1:0] M_aluOut, M_writeData;
     reg  [4:0]        M_wa3;
     reg               M_regWrite, M_memtoReg, M_memWrite, M_take_branch;
     wire [DATA_W-1:0] M_dmOut;
@@ -79,8 +80,8 @@ module pp_cpu #(
     // ---------------------------------------------------------
     // HAZARD DETECTION UNIT
     // ---------------------------------------------------------
-    wire [1:0] BE_forward, AE_forward;
-    wire       stall;
+    wire              stall;
+    
 //==============================================================================
 // 3) Assignments and always blocks
 //==============================================================================
@@ -92,7 +93,7 @@ module pp_cpu #(
     always @(posedge clk) begin
         if (rst)
             F_PC <= {ADDR_W{1'b0}};
-        else if (!halt)
+        else if (!halt && !F_stall)   // Only update PC if not stalled and not halted
             F_PC <= F_PCnext;
     end
 
@@ -112,7 +113,7 @@ module pp_cpu #(
                                               // incurs a one-cycle bubble to prevent incorrect branch calculations
             D_instr    <= {DATA_W{1'b0}};
             D_PCplus4  <= {ADDR_W{1'b0}};
-        end else begin
+        end else if (!D_stall) begin
             D_instr   <= F_instr;
             D_PCplus4 <= F_PCplus4;
         end
@@ -136,7 +137,7 @@ module pp_cpu #(
     //---------------------------------------------------------
     // E register
     always @(posedge clk) begin
-        if(rst) begin
+        if(rst || E_flush) begin
             E_regWrite    <= 1'b0;
             E_memtoReg    <= 1'b0;
             E_memWrite    <= 1'b0;
@@ -183,12 +184,12 @@ module pp_cpu #(
     // ALU operand A:
     //   - for shifts: use shamt (zero-extended)
     //   - otherwise: use rs data
-    assign E_aluA = (E_is_shift) ? {27'b0, E_shamt} : E_rf_out1;
+    assign E_aluA = (E_is_shift) ? {27'b0, E_shamt} : E_intermediateA;
 
     // ALU operand B:
     //   - E_aluSrc=1 selects E_imm_ext
     //   - E_aluSrc=0 selects rt data
-    assign E_aluB = (E_aluSrc) ? E_imm_ext : E_rf_out2;
+    assign E_aluB = (E_aluSrc) ? E_imm_ext : E_intermediateB;
     
     //---------------------------------------------------------
     // MEMORY STAGE
@@ -201,17 +202,17 @@ module pp_cpu #(
             M_memWrite       <= 1'b0;
             M_PCbranch       <= {ADDR_W{1'b0}};
             M_wa3            <= {5{1'b0}};
-            M_rf_out2        <= {DATA_W{1'b0}};
+            M_writeData      <= {DATA_W{1'b0}};
             M_aluOut         <= {DATA_W{1'b0}};
             M_aluOut_is_zero <= 1'b0;
-            M_take_branch     <= 1'b0;
+            M_take_branch    <= 1'b0;
         end else begin
             M_regWrite       <= E_regWrite;
             M_memtoReg       <= E_memtoReg;
             M_memWrite       <= E_memWrite;
             M_PCbranch       <= E_PCbranch;
             M_wa3            <= E_wa3;
-            M_rf_out2        <= E_rf_out2;
+            M_writeData      <= E_intermediateB;   // Store data comes from rt register (after forwarding logic)
             M_aluOut         <= E_aluOut;
             M_aluOut_is_zero <= E_aluOut_is_zero;
             M_take_branch    <= E_take_branch;
@@ -240,6 +241,22 @@ module pp_cpu #(
 
     assign W_rf_in = (W_memtoReg)? W_dmOut : W_aluOut;
 
+    //---------------------------------------------------------
+    // HAZARD DETECTION UNIT
+    //---------------------------------------------------------
+    always @* begin
+        case(E_forwardA)
+            2'b01  : E_intermediateA = W_rf_in;         // Forward from Writeback stage (data just written back to register file)
+            2'b10  : E_intermediateA = M_aluOut;        // Forward from Memory stage (data available at the end of Memory stage, can be used in Execute stage of next instruction)
+            default: E_intermediateA = E_rf_out1;       // No hazard, use data read from register file in Decode stage
+        endcase
+
+        case(E_forwardB)
+            2'b01  : E_intermediateB = W_rf_in;         // Forward from Writeback stage (data just written back to register file)
+            2'b10  : E_intermediateB = M_aluOut;        // Forward from Memory stage (data available at the end of Memory stage, can be used in Execute stage of next instruction)
+            default: E_intermediateB = E_rf_out2;       // No hazard, use data read from register file in Decode stage
+        endcase
+    end
 //==============================================================================
 // 4) Submodules instantiation
 //==============================================================================
@@ -287,7 +304,7 @@ module pp_cpu #(
         .clk     (clk),
         .we      (M_memWrite),
         .addr    (M_aluOut[ADDR_W-1:0]),
-        .data_in (M_rf_out2),           // Store data comes from rt register
+        .data_in (M_writeData),           // Store data comes from rt register
         .data_out(M_dmOut)             // Load data goes to writeback mux
     );
 
@@ -342,8 +359,8 @@ module pp_cpu #(
         .E_rt       (E_rt),
         .M_wa3      (M_wa3),
         .W_wa3      (W_wa3),
-        .BE_forward (BE_forward),
-        .AE_forward (AE_forward),
+        .forwardA   (E_forwardA),
+        .forwardB   (E_forwardB),
         .stall      (stall)
     );
 
