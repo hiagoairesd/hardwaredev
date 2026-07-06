@@ -7,7 +7,7 @@ module hazard_unit #(
     output reg        F_stall, D_stall, E_flush, PC_write
 );
 /* 
-    The hazard detection unit receives the two source registers from the instruction in the Execute stage (E_rt and E_rt) 
+    The hazard detection unit receives the two source registers from the instruction in the Execute stage (E_rs and E_rt) 
     and the destination registers from the instructions in the Memory and Writeback stages (M_wa3 and W_wa3). 
     It also receives the RegWrite signals from the Memory and Writeback stages (M_regWrite and W_regWrite) 
     to know whether the destination register will actually be written.
@@ -28,7 +28,17 @@ module hazard_unit #(
         end else begin
             forwardB = 2'b00; // No hazard, use data from register file
         end
+
+        if(E_memtoReg && ((D_rs == E_rt) || (D_rt == E_rt))) begin
+            F_stall = 1'b1; 
+            D_stall = 1'b1;
+            E_flush = 1'b1;
+        end
+
     end
+
+
+
 
 
 endmodule
