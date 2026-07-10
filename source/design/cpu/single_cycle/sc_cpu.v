@@ -16,7 +16,6 @@
 //   - Memory addressing uses word index (addr = ALU_out[ADDR_W-1:0])
 //   - Halt behavior:
 //       * control_unit asserts 'halt' to stop PC updates
-//       * output 'halted' mirrors 'halt'
 //
 // NOTES / DESIGN CHOICES
 //   - Data memory is single-ported and uses separate data buses:
@@ -24,7 +23,7 @@
 //       * 'data_out' is exposed internally as 'DM_out' for loads/writeback
 //   - Shift instructions:
 //       * ALU input A uses shamt (zero-extended) when instruction is shift
-//       * ALU input B is selected by ALU_src (imm_ext vs RF_data_out2)
+//       * ALU input B is selected by ALUSrc (imm_ext vs RF_data_out2)
 //
 // DEBUG OBSERVABILITY
 //   - Internal signals are named to be waveform-friendly:
@@ -51,11 +50,6 @@ module sc_cpu #(
     //==============================================================================
     // 2) Architectural state (PC) + halt interface
     //==============================================================================
-
-    // Halt signal from control unit; exported as output 'halted'
-    // wire halt;
-    // assign halted = halt;
-
     // Program counter is word-indexed (ADDR_W bits)
     reg  [ADDR_W-1:0] pc;
 
@@ -116,7 +110,7 @@ module sc_cpu #(
         .aluControl     (ALU_control),     // ALU operation control
         .regWrite       (regWrite),        // Enable register write
         .regDst         (regDst),          // Select destination register (rd vs rt)
-        .aluSrc         (ALU_src),         // Select ALU source B (imm vs reg)
+        .aluSrc         (ALUSrc),         // Select ALU source B (imm vs reg)
         .memWrite       (memWrite),        // Enable data memory write
         .memtoReg       (memtoReg),        // Select writeback source (mem vs ALU)
         .jump           (jump),            // Jump instruction
@@ -169,7 +163,7 @@ module sc_cpu #(
     //   - ALUSrc=1 selects imm_ext
     //   - ALUSrc=0 selects rt data
     wire [DATA_W-1:0] ALU_b =
-        (ALU_src) ? imm_ext : RF_data_out2;
+        (ALUSrc) ? imm_ext : RF_data_out2;
 
     wire [DATA_W-1:0] ALU_out;
     wire              ALU_is_zero;
