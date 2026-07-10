@@ -26,9 +26,7 @@ module register_file_tb();
     end
 
     register_file # (
-        .ADDR_W(REG_ADDR_W),
-        .DATA_W(DATA_W),
-        .NREGS (NREGS)
+        .DATA_W(DATA_W)
     ) register_file (
         .clk        (clk),
         .rst        (rst),
