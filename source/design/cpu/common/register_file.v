@@ -1,5 +1,6 @@
 module register_file #(
-    parameter DATA_W = 32
+    parameter DATA_W = 32,
+    parameter ADDR_W = 5
 ) (
     input wire               clk,
     input wire               rst,
@@ -12,7 +13,6 @@ module register_file #(
     output wire [DATA_W-1:0] data_out2 
 );
     localparam NREGS = 32;
-    localparam ADDR_W = 5;
 
     reg [DATA_W-1:0] regs [NREGS-1:0];
     integer i;
