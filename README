@@ -207,7 +207,7 @@ For Sky130 technology mapping, install Sky130 PDK/liberty files in your machine.
 ### 2) Clone repository
 
 ```bash
-git clone https://github.com/hiagoairesd/hardwaredev.git
+git clone https://github.com/hiagoairesd/hardware-development.git
 cd hardwaredev
 ```
 
