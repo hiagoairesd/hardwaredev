@@ -339,23 +339,26 @@ module pp_cpu #(
     //------------------------------------------------------------------------------
 
     hazard_unit hazard_unit(
-        .F_stall    (F_stall),
-        .D_rs       (D_rs),
-        .D_rt       (D_rt),
-        .D_stall    (D_stall),
         .D_branch   (D_branch),
+        .E_regWrite (E_regWrite),
         .E_memtoReg (E_memtoReg),
-        .E_rs       (E_rs),
-        .E_rt       (E_rt),
-        .E_flush    (E_flush),
-        .M_wa3      (M_wa3),        // M_wa3 == WriteRegM
         .M_regWrite (M_regWrite),
         .W_regWrite (W_regWrite),
-        .W_wa3      (W_wa3),        // W_wa3 == WriteRegW
+        .M_memtoReg (M_memtoReg),
+        .D_rs       (D_rs),
+        .D_rt       (D_rt),
+        .E_rs       (E_rs),
+        .E_rt       (E_rt),
+        .M_wa3      (M_wa3),
+        .W_wa3      (W_wa3),
+        .E_wa3      (E_wa3),
         .forwardAE  (E_forwardA),
-        .forwardBE  (E_forwardB),
         .forwardAD  (D_forwardA),
-        .forwardBD  (D_forwardB)
+        .forwardBE  (E_forwardB),
+        .forwardBD  (D_forwardB),
+        .F_stall    (F_stall),
+        .D_stall    (D_stall),
+        .E_flush    (E_flush)
     );
 
 endmodule

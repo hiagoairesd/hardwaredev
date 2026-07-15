@@ -1,7 +1,7 @@
 module hazard_unit (
     input  wire       D_branch, E_regWrite, E_memtoReg, M_regWrite, W_regWrite, M_memtoReg,
     input  wire [4:0] D_rs, D_rt, E_rs, E_rt, 
-    input  wire [4:0] M_wa3, W_wa3,E_wa3,       // wa3 == WriteReg (write RF address pipelined from E stage to M and W stages)
+    input  wire [4:0] M_wa3, W_wa3, E_wa3,       // wa3 == WriteReg (write RF address pipelined from E stage to M and W stages)
     output reg  [1:0] forwardAE, forwardBE,
     output reg        forwardAD, forwardBD,
     output reg        F_stall, D_stall, E_flush
@@ -108,28 +108,26 @@ module hazard_unit (
 //==============================================================================
 // Load-use hazard detection (Stall logic)
 //==============================================================================
+    // Load-Word Stall logic
+    /*
+        If E_memtoReg is true, it means that the instruction in the Execute stage is a load instruction (LW).
+        If the destination register of this load instruction (E_rt) matches either of the source registers of the instruction in the Decode stage (D_rs or D_rt), 
+        then we have a load-use hazard. In this case, we need to stall the pipeline to allow the load instruction to complete and write its result back to the register file before the dependent instruction in the Decode stage can proceed.
+    */
+    assign lw_stall = E_memtoReg && ((E_rt == D_rs) || (E_rt == D_rt));
+    //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Branch Stall logic
+    /*
+        If D_branch is true, it means that the instruction in the Decode stage is a branch instruction.
+        If the destination register of the instruction in the Execute stage (E_wa3) or the Memory stage (M_wa3) matches either of the source registers of the branch instruction (D_rs or D_rt), 
+        and the instruction in the Execute stage is writing to a register (E_regWrite) or the instruction in the Memory stage is a load instruction (M_memtoReg), then we have a branch hazard. 
+        In this case, we need to stall the pipeline to allow the branch instruction to resolve its condition before proceeding with the next instruction.
+    */
+    assign branch_stall = (D_branch && E_regWrite && ((E_wa3 == D_rs) || (E_wa3 == D_rt))) || (D_branch && M_memtoReg && ((M_wa3 == D_rs) || (M_wa3 == D_rt)));
+    
+    //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
     always @* begin
-
-        //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        // Load-Word Stall logic
-        /*
-            If E_memtoReg is true, it means that the instruction in the Execute stage is a load instruction (LW).
-            If the destination register of this load instruction (E_rt) matches either of the source registers of the instruction in the Decode stage (D_rs or D_rt), 
-            then we have a load-use hazard. In this case, we need to stall the pipeline to allow the load instruction to complete and write its result back to the register file before the dependent instruction in the Decode stage can proceed.
-        */
-        assign lw_stall = E_memtoReg && ((E_rt == D_rs) || (E_rt == D_rt));
-
-        //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        // Branch Stall logic
-        /*
-            If D_branch is true, it means that the instruction in the Decode stage is a branch instruction.
-            If the destination register of the instruction in the Execute stage (E_wa3) or the Memory stage (M_wa3) matches either of the source registers of the branch instruction (D_rs or D_rt), 
-            and the instruction in the Execute stage is writing to a register (E_regWrite) or the instruction in the Memory stage is a load instruction (M_memtoReg), then we have a branch hazard. 
-            In this case, we need to stall the pipeline to allow the branch instruction to resolve its condition before proceeding with the next instruction.
-        */
-        assign branch_stall = (D_branch && E_regWrite && ((E_wa3 == D_rs) || (E_wa3 == D_rt))) || (D_branch && M_memtoReg && ((M_wa3 == D_rs) || (M_wa3 == D_rt)));
-        
-        //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         if(lw_stall || branch_stall) begin
             F_stall = 1'b1; 
             D_stall = 1'b1;
