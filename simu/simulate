@@ -10,6 +10,11 @@ DESIGN="$ROOT/design"
 CPU_DESIGN="$DESIGN/cpu"
 VERIF="$ROOT/verif"
 
+# Prefer tools from PATH, but support user-local installs without sudo.
+if ! command -v iverilog >/dev/null 2>&1 && [[ -x "$HOME/.local/bin/iverilog" ]]; then
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <dut> [single_cycle|multi_cycle] [vvp_args...]" >&2
   echo "Aliases: mc_<dut>, sc_<dut>, multi_cycle_<dut>, single_cycle_<dut>" >&2
@@ -135,8 +140,23 @@ for common_dir in "${common_dirs[@]}"; do
   fi
 done
 
+iverilog_bin="$(command -v iverilog || true)"
+vvp_bin="$(command -v vvp || true)"
+
+if [[ -z "$iverilog_bin" ]]; then
+  echo "ERROR: iverilog not found in PATH." >&2
+  echo "Install Icarus Verilog or add it to PATH." >&2
+  exit 127
+fi
+
+if [[ -z "$vvp_bin" ]]; then
+  echo "ERROR: vvp not found in PATH." >&2
+  echo "Install Icarus Verilog runtime or add it to PATH." >&2
+  exit 127
+fi
+
 iverilog_cmd=(
-  iverilog -g2012 -o "$out"
+  "$iverilog_bin" -g2012 -o "$out"
   -y "$CPU_DESIGN"
   -y "$DESIGN"
   -y "$rtl_dir"
@@ -154,7 +174,7 @@ echo "###############################################################"
 echo "### Running Simulation... #####################################"
 echo "###############################################################"
 
-vvp "$out" "$@" 2>&1 | \
+"$vvp_bin" "$out" "$@" 2>&1 | \
   grep -v "VCD warning" | \
   grep -v "Not enough words in the file"
 
