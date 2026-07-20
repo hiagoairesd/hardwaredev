@@ -58,11 +58,12 @@ module pp_cpu_tb();
     // (DUT may have its own internal width/behavior).
     localparam int ADDR_W = 32;
     localparam int DATA_W = 32;
-    localparam int DEPTH  = 32;
+    localparam int DEPTH  = 256;
 
     // Maximum number of cycles the TB will allow before declaring TIMEOUT.
     // This is a safety net to prevent infinite simulations if HALT is not reached.
     integer max_cycles = 2500;
+    integer drain_cycles = 4;
 
     //==============================================================================
     // 2) Signals (TB <-> DUT) + TB runtime config
@@ -145,32 +146,36 @@ module pp_cpu_tb();
         // Tiny delay (#1) to ensure all internal signals to stabilize after the clock edge
         #1;
         if (!rst) begin
-            // 1. Primary Trace (Time, PC, Instr, State)
+            // 1. Primary Trace (Time, PC, Instr)
             if (trace) begin
-                $display("t = %0t [PC = %0d] [Instr = %08h] [State = %s]",
-                         $time, DUT.pc, DUT.instr, get_state_name(DUT.control_unit.state));
+                $display("t = %0t [PC = %0d] [Instr = %08h]",
+                         $time, DUT.F_PC, DUT.F_instr);
             end
-            // 2. Internal Microarchitecture Trace (A, B, ALUOut)
+            // 2. Internal Microarchitecture Trace
             if (trace_m) begin
-                $display("   [INTERNAL] A = %h | B = %h | ALUOut = %h | State = %0d", 
-                         DUT.rf_regA, DUT.rf_regB, DUT.alu_reg, DUT.control_unit.state);
+                $display("   [INTERNAL] D_PCplus4 = %h | E_ALUOut = %h | M_ALUOut = %h | W_ALUOut = %h",
+                         DUT.D_PCplus4, DUT.E_aluOut, DUT.M_aluOut, DUT.W_aluOut);
             end
             // 3. Writeback/Commit Trace (Events)
             if (trace_w) begin
                 // Register Write
-                if (DUT.regWrite && (DUT.control_unit.state == 4'd4 || DUT.control_unit.state == 4'd7 || DUT.control_unit.state == 4'd9)) begin
-                    $display("   >>> REGWRITE | R%0d <= %08h (Committed)", DUT.wa3, DUT.rf_wdata);
+                if (DUT.W_regWrite) begin
+                    $display("   >>> REGWRITE | R%0d <= %08h (Committed)", DUT.W_wa3, DUT.W_rf_in);
                 end
                 // Memory Write
-                if (DUT.memWrite && DUT.control_unit.state == 4'd5) begin
-                    $display("   >>> MEMWRITE | mem[%0d] <= %08h", DUT.alu_out, DUT.mem_data_in);
+                if (DUT.M_memWrite) begin
+                    $display("   >>> MEMWRITE | mem[%0d] <= %08h", DUT.M_aluOut, DUT.M_writeData);
                 end
                 // Jump / Branch Events
-                if (DUT.control_unit.state == 4'd10) begin
-                    $display("   >>> JUMP -> Target: %0d", DUT.pc_next);
+                if (DUT.D_jump) begin
+                    $display("   >>> JUMP -> Target: %0d", DUT.F_PCjump);
                 end
-                if (DUT.control_unit.state == 4'd8 && DUT.control_unit.take_branch) begin
-                    $display("   >>> BRANCH Taken -> Target: %0d", DUT.pc_next);
+                if (DUT.D_take_branch) begin
+                    $display("   >>> BRANCH Taken -> Target: %0d", DUT.D_PCbranch);
+                end
+                if (DUT.D_branch) begin
+                    $display("   >>> BRANCH EVAL | rs=R%0d(%08h) rt=R%0d(%08h) take=%0b",
+                             DUT.D_rs, DUT.D_branchOperandA, DUT.D_rt, DUT.D_branchOperandB, DUT.D_take_branch);
                 end
             end
         end
@@ -212,8 +217,8 @@ module pp_cpu_tb();
                 17: $readmemh("../source/verif/cpu/common/assembly/halt_placement.hex",       DUT.instr_mem.ROM);
                 18: $readmemh("../source/verif/cpu/common/assembly/loop_counter.hex",         DUT.instr_mem.ROM);
                 19: $readmemh("../source/verif/cpu/common/assembly/array_sum.hex",            DUT.instr_mem.ROM);
-                20: $readmemh("../source/verif/cpu/common/assembly/mipstest.hex",             DUT.instr_mem.ROM);
-                21: $readmemh("../source/verif/cpu/pipelined/assembly/integration.hex",       DUT.instr_mem.ROM);
+                20: $readmemh("../source/verif/cpu/pipelined/assembly/mipstest.hex",          DUT.instr_mem.ROM);
+                21: $readmemh("../source/verif/cpu/common/assembly/integration.hex",          DUT.instr_mem.ROM);
                 default:
                     $readmemh("../source/verif/cpu/common/assembly/integration.hex",          DUT.instr_mem.ROM);
             endcase
@@ -751,20 +756,20 @@ module pp_cpu_tb();
     //   - Exercises add/sub/and/or/slt/addi/lw/sw/beq/j control-flow sequence.
     // PASS criteria:
     //   - Final architectural state matches the reference program.
-    //   - Program writes value 7 to data memory address 84.
+    //   - Program writes loaded value (from mem[80]) to data memory address 84.
     //------------------------------------------------------------------------------
     task automatic mipstest;
         begin
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING MIPS-TESTS (EXAMPLE) [20] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------", `ANSI_RST});
-            check_reg(2, DUT.register_file.regs[2], 32'd7);
-            check_reg(3, DUT.register_file.regs[3], 32'12);
-            check_reg(4, DUT.register_file.regs[4], 32'1);
+            check_reg(2, DUT.register_file.regs[2], -32'sd4);
+            check_reg(3, DUT.register_file.regs[3], 32'd12);
+            check_reg(4, DUT.register_file.regs[4], 32'd1);
             check_reg(5, DUT.register_file.regs[5], 32'd0);
-            check_reg(7, DUT.register_file.regs[7], 32'd7);
-            check_mem(80, DUT.data_mem.mem[80], 32'd7);
-            check_mem(84, DUT.data_mem.mem[84], 32'd7);
+            check_reg(7, DUT.register_file.regs[7], -32'sd4);
+            check_mem(20, DUT.data_mem.mem[20], -32'sd4);
+            check_mem(21, DUT.data_mem.mem[21], 32'd0);
         end
     endtask
 
@@ -837,7 +842,10 @@ module pp_cpu_tb();
     //------------------------------------------------------------------------------
     task automatic run_test(input integer id);
         integer i;
+        bit halt_seen;
         begin
+            halt_seen = 1'b0;
+
             // 1) Reset asserted
             rst = 1'b1;
             $display("\033[1;34m-> Reset asserted @%0t\033[0m", $time);
@@ -857,18 +865,22 @@ module pp_cpu_tb();
             // 4) Run loop: stop at HALT or after max_cycles
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
-                if (DUT.halt) begin
-                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.pc);
+                if (DUT.D_halt) begin
+                    halt_seen = 1'b1;
+                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.F_PC);
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
-            
+
             // Enforce termination condition
-            if (DUT.halt != 1'b1) begin
+            if (!halt_seen) begin
                 $fatal(1,
                        "\033[1;31m\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t\033[0m",
-                       max_cycles, DUT.pc, $time);
+                       max_cycles, DUT.F_PC, $time);
             end
+
+            // Let in-flight pipeline operations retire before final checks.
+            repeat (drain_cycles) @(posedge clk);
 
             // 5) Check results
             case (id)
