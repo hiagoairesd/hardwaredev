@@ -25,16 +25,21 @@
 //
 // PLUSARGS
 //   +test=<id>      : selects which program to load / which checker to run
-//   +trace          : lightweight trace (PC/instr/opcode each cycle), implies trace_w
-//   +trace_w        : detailed trace (REGWRITE/MEMWRITE/BRANCH/JUMP)
+//   +trace          : lightweight trace (PC/instr each cycle)
+//   +trace_w        : detailed trace (REGWRITE/MEMWRITE/BRANCH/JUMP), commits as they retire
+//   +trace_m        : pipe diagram (which PC occupies each of F/D/E/M/W this cycle, or "bubble")
+//   +trace_h        : hazard trace (STALL/FLUSH/FORWARD events from the hazard unit)
 //
 // TRACE OUTPUT FORMAT (when enabled)
-//   - "t=... pc=... instr=... opcode=..."
-//   - "t=... | REGWRITE | R<idx> <= <data>"
-//   - "t=... | MEMWRITE | mem[<addr>] <= <data>"
-//   - "t=... | BRANCH taken -> pc_next=<...>"
-//   - "t=... | JUMP -> pc_next=<...>"
+//   - "t=... [PC = ...] [Instr = ...]"
+//   - ">>> REGWRITE | R<idx> <= <data> (Committed)"
+//   - ">>> MEMWRITE | mem[<addr>] <= <data>"
+//   - ">>> JUMP -> Target: <...>" / ">>> BRANCH Taken -> Target: <...>"
+//   - "[PIPE] F:<pc> D:<pc|bubble> E:<pc|bubble> M:<pc|bubble> W:<pc|bubble>"
+//   - "[HZ] STALL(lw|br):... FLUSH(J|B->pc) FWD_EX[A:M/W(Rn) B:M/W(Rn)] FWD_DE[A:M(Rn) B:M(Rn)]"
+//     (one line per cycle, only the tags that are active that cycle are printed)
 //   - "-> HALT detected @t (PC=...)"
+//
 //
 // HOW TO DEBUG QUICKLY
 //   - Timeout: program missing HALT or control-flow bug (branch/jump/PC update).
@@ -76,8 +81,8 @@ module pp_cpu_tb();
     // Selected test id (from +test=<id>)
     integer test_id;
 
-    // Trace controls (from +trace / +trace_w / +trace_m)
-    bit trace, trace_w, trace_m;
+    // Trace controls (from +trace / +trace_w / +trace_m / +trace_h)
+    bit trace, trace_w, trace_m, trace_h;
 
     // DUT-provided halt indication
     wire halt;
@@ -125,10 +130,12 @@ module pp_cpu_tb();
         // trace modes:
         //   +trace_w : detailed (writes/branches/jumps)
         //   +trace   : lightweight (pc/instr/opcode) AND forces trace_w
-        //   +trace_m : microarchitectural (internal signals like reg A/B, ALU out)
+        //   +trace_m : pipe diagram (which PC occupies each of F/D/E/M/W this cycle, or "bubble")
+        //   +trace_h : hazard trace (stall/flush/forward events from the hazard unit)
         trace_w = $test$plusargs("trace_w");
-        trace   = $test$plusargs("trace") && !trace_w;
         trace_m = $test$plusargs("trace_m");
+        trace_h = $test$plusargs("trace_h");
+        trace   = $test$plusargs("trace") && !(trace_w || trace_h || trace_m);
         if (trace) trace_w = 1'b1;
 
         // test selection: +test=<id>
@@ -136,6 +143,46 @@ module pp_cpu_tb();
 
         // OPTIONAL: allow overriding max_cycles via +cycles=<n>
         // void'($value$plusargs("cycles=%d", max_cycles));
+    end
+
+    //==============================================================================
+    // 6.5) Pipeline occupancy shadow tracker (TB-only bookkeeping for trace_m)
+    //==============================================================================
+    // pp_cpu's E/M/W stage registers carry control bits and data, but not a PC of their
+    // own -- unlike F (F_PC) and D (D_PCplus4), there is no DUT signal that says "which
+    // instruction is sitting in Execute/Memory/Writeback right now". These shadow
+    // registers are clocked with the exact same enable/flush conditions as the real
+    // D/E/M/W flip-flops in pp_cpu (D_CLR, D_EN, E_flush), so they track PC identity
+    // through the pipeline without altering or reading back any extra DUT state.
+    reg [ADDR_W-1:0] pipe_D_pc, pipe_E_pc, pipe_M_pc, pipe_W_pc;
+    reg               pipe_D_v, pipe_E_v, pipe_M_v, pipe_W_v;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            pipe_D_v  <= 1'b0; pipe_E_v  <= 1'b0; pipe_M_v  <= 1'b0; pipe_W_v  <= 1'b0;
+            pipe_D_pc <= {ADDR_W{1'b0}}; pipe_E_pc <= {ADDR_W{1'b0}};
+            pipe_M_pc <= {ADDR_W{1'b0}}; pipe_W_pc <= {ADDR_W{1'b0}};
+        end else begin
+            // Decode: squashed on branch/jump (D_CLR), held on stall (!D_EN), else loads Fetch's PC.
+            if (DUT.D_CLR) begin
+                pipe_D_v <= 1'b0;
+            end else if (DUT.D_EN) begin
+                pipe_D_v  <= 1'b1;
+                pipe_D_pc <= DUT.F_PC;
+            end
+            // Execute: squashed on a hazard-induced bubble (E_flush), else always advances from Decode.
+            if (DUT.E_flush) begin
+                pipe_E_v <= 1'b0;
+            end else begin
+                pipe_E_v  <= pipe_D_v;
+                pipe_E_pc <= pipe_D_pc;
+            end
+            // Memory / Writeback registers have no enable or flush input in the RTL: always advance.
+            pipe_M_v  <= pipe_E_v;
+            pipe_M_pc <= pipe_E_pc;
+            pipe_W_v  <= pipe_M_v;
+            pipe_W_pc <= pipe_M_pc;
+        end
     end
 
     //==============================================================================
@@ -151,10 +198,20 @@ module pp_cpu_tb();
                 $display("t = %0t [PC = %0d] [Instr = %08h]",
                          $time, DUT.F_PC, DUT.F_instr);
             end
-            // 2. Internal Microarchitecture Trace
+            // 2. Pipe Diagram Trace: which instruction (by PC) occupies each stage this
+            //    cycle, or "bubble" if that stage was squashed by a flush/stall. This is
+            //    the pipeline-specific counterpart to mc's FSM-state trace: mc has one
+            //    instruction moving through states, pp has up to 5 instructions moving
+            //    through stages, so seeing WHERE each one is (and where the bubbles are)
+            //    is the useful "internal" view here.
             if (trace_m) begin
-                $display("   [INTERNAL] D_PCplus4 = %h | E_ALUOut = %h | M_ALUOut = %h | W_ALUOut = %h",
-                         DUT.D_PCplus4, DUT.E_aluOut, DUT.M_aluOut, DUT.W_aluOut);
+                string d_s, e_s, m_s, w_s;
+                if (pipe_D_v) d_s = $sformatf("%0d", pipe_D_pc); else d_s = "bubble";
+                if (pipe_E_v) e_s = $sformatf("%0d", pipe_E_pc); else e_s = "bubble";
+                if (pipe_M_v) m_s = $sformatf("%0d", pipe_M_pc); else m_s = "bubble";
+                if (pipe_W_v) w_s = $sformatf("%0d", pipe_W_pc); else w_s = "bubble";
+                $display("   [PIPE] F:%0d D:%s E:%s M:%s W:%s",
+                         DUT.F_PC, d_s, e_s, m_s, w_s);
             end
             // 3. Writeback/Commit Trace (Events)
             if (trace_w) begin
@@ -177,6 +234,62 @@ module pp_cpu_tb();
                     $display("   >>> BRANCH EVAL | rs=R%0d(%08h) rt=R%0d(%08h) take=%0b",
                              DUT.D_rs, DUT.D_branchOperandA, DUT.D_rt, DUT.D_branchOperandB, DUT.D_take_branch);
                 end
+            end
+            // 4. Hazard Trace (Events): stall / flush / forward decisions from the hazard unit.
+            //    This is the pipeline-specific counterpart to mc's FSM trace: instead of one
+            //    instruction moving through states, up to 5 instructions overlap here, so what
+            //    matters is how the hazard_unit keeps them from clobbering each other.
+            // All hazard events for this cycle are folded into a single line (one $display),
+            // tagged STALL/FLUSH/FWD_EX/FWD_DE, so a busy cycle stays readable instead of
+            // spilling into 4-5 separate prints. M = forwarded from Memory stage (ALU-ALU
+            // bypass), W = forwarded from Writeback stage.
+            if (trace_h) begin
+                string hz_line;
+                hz_line = "";
+                // STALL: Fetch/Decode held (and a bubble punched into Execute) because
+                // Decode's operands aren't ready yet (load-use) or a branch about to
+                // resolve needs them (branch-operand). F_stall/D_stall/E_flush always
+                // fire together in the hazard unit, so one tag covers all three.
+                if (DUT.F_stall) begin
+                    if (DUT.hazard_unit.lw_stall)
+                        hz_line = {hz_line, $sformatf("STALL(lw):R%0d,R%0d<-E.rt=R%0d ", DUT.D_rs, DUT.D_rt, DUT.E_rt)};
+                    else if (DUT.hazard_unit.branch_stall)
+                        hz_line = {hz_line, $sformatf("STALL(br):R%0d,R%0d ", DUT.D_rs, DUT.D_rt)};
+                end
+                // FLUSH: control-flow squash of the instruction just fetched into Decode.
+                if (DUT.D_CLR) begin
+                    string kind;
+                    int    target;
+                    if (DUT.D_jump) kind = "J"; else kind = "B";
+                    if (DUT.D_jump) target = DUT.F_PCjump; else target = DUT.D_PCbranch;
+                    hz_line = {hz_line, $sformatf("FLUSH(%s->%0d) ", kind, target)};
+                end
+                // FWD_EX: bypass into the ALU operands (the common RAW case: back-to-back R-type/I-type).
+                // NOTE: every conditional string piece below is built with if/else (never
+                // `cond ? "" : $sformatf(...)` or `cond ? " " : ""`) -- Icarus mishandles a
+                // ternary when one branch is a bare string literal and the other isn't (or
+                // when the two literals differ in length), silently producing wrong text.
+                if (DUT.E_forwardA != 2'b00 || DUT.E_forwardB != 2'b00) begin
+                    string a, b, sep;
+                    if (DUT.E_forwardA == 2'b00) a = "";
+                    else a = $sformatf("A:%s(R%0d)", (DUT.E_forwardA == 2'b10) ? "M" : "W", DUT.E_rs);
+                    if (DUT.E_forwardB == 2'b00) b = "";
+                    else b = $sformatf("B:%s(R%0d)", (DUT.E_forwardB == 2'b10) ? "M" : "W", DUT.E_rt);
+                    if (a != "" && b != "") sep = " "; else sep = "";
+                    hz_line = {hz_line, $sformatf("FWD_EX[%s%s%s] ", a, sep, b)};
+                end
+                // FWD_DE: bypass into the early-branch comparator (avoids a stall on beq/bne/blt).
+                if (DUT.D_forwardA || DUT.D_forwardB) begin
+                    string a, b, sep;
+                    if (DUT.D_forwardA) a = $sformatf("A:M(R%0d)", DUT.D_rs);
+                    else a = "";
+                    if (DUT.D_forwardB) b = $sformatf("B:M(R%0d)", DUT.D_rt);
+                    else b = "";
+                    if (a != "" && b != "") sep = " "; else sep = "";
+                    hz_line = {hz_line, $sformatf("FWD_DE[%s%s%s] ", a, sep, b)};
+                end
+                if (hz_line != "")
+                    $display("   [HZ] %s", hz_line);
             end
         end
     end
