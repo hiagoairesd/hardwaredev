@@ -2,7 +2,7 @@
 //==============================================================================
 // pp_cpu_tb.sv
 //
-// Testbench for: mc_cpu (MIPS-like multi-cycle CPU)
+// Testbench for: pp_cpu (MIPS-like pipelined CPU)
 //
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
@@ -210,29 +210,29 @@ module pp_cpu_tb();
                 if (pipe_E_v) e_s = $sformatf("%0d", pipe_E_pc); else e_s = "bubble";
                 if (pipe_M_v) m_s = $sformatf("%0d", pipe_M_pc); else m_s = "bubble";
                 if (pipe_W_v) w_s = $sformatf("%0d", pipe_W_pc); else w_s = "bubble";
-                $display("   [PIPE] F:%0d D:%s E:%s M:%s W:%s",
-                         DUT.F_PC, d_s, e_s, m_s, w_s);
+                $display("t=%0t [PIPE] F:%0d D:%s E:%s M:%s W:%s",
+                         $time, DUT.F_PC, d_s, e_s, m_s, w_s);
             end
             // 3. Writeback/Commit Trace (Events)
             if (trace_w) begin
                 // Register Write
                 if (DUT.W_regWrite) begin
-                    $display("   >>> REGWRITE | R%0d <= %08h (Committed)", DUT.W_wa3, DUT.W_rf_in);
+                    $display("t=%0t    >>> REGWRITE | R%0d <= %08h (Committed)", $time, DUT.W_wa3, DUT.W_rf_in);
                 end
                 // Memory Write
                 if (DUT.M_memWrite) begin
-                    $display("   >>> MEMWRITE | mem[%0d] <= %08h", DUT.M_aluOut, DUT.M_writeData);
+                    $display("t=%0t    >>> MEMWRITE | mem[%0d] <= %08h", $time, DUT.M_aluOut, DUT.M_writeData);
                 end
                 // Jump / Branch Events
                 if (DUT.D_jump) begin
-                    $display("   >>> JUMP -> Target: %0d", DUT.F_PCjump);
+                    $display("t=%0t    >>> JUMP -> Target: %0d", $time, DUT.F_PCjump);
                 end
                 if (DUT.D_take_branch) begin
-                    $display("   >>> BRANCH Taken -> Target: %0d", DUT.D_PCbranch);
+                    $display("t=%0t    >>> BRANCH Taken -> Target: %0d", $time, DUT.D_PCbranch);
                 end
                 if (DUT.D_branch) begin
-                    $display("   >>> BRANCH EVAL | rs=R%0d(%08h) rt=R%0d(%08h) take=%0b",
-                             DUT.D_rs, DUT.D_branchOperandA, DUT.D_rt, DUT.D_branchOperandB, DUT.D_take_branch);
+                    $display("t=%0t    >>> BRANCH EVAL | rs=R%0d(%08h) rt=R%0d(%08h) take=%0b",
+                             $time, DUT.D_rs, DUT.D_branchOperandA, DUT.D_rt, DUT.D_branchOperandB, DUT.D_take_branch);
                 end
             end
             // 4. Hazard Trace (Events): stall / flush / forward decisions from the hazard unit.
@@ -289,7 +289,7 @@ module pp_cpu_tb();
                     hz_line = {hz_line, $sformatf("FWD_DE[%s%s%s] ", a, sep, b)};
                 end
                 if (hz_line != "")
-                    $display("   [HZ] %s", hz_line);
+                    $display("t=%0t    [HZ] %s", $time, hz_line);
             end
         end
     end
