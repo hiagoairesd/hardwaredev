@@ -11,6 +11,9 @@ module pp_cpu #(
 // 2) Variables declaration
 //==============================================================================
 
+    // Drive the module's own halt output from the Decode-stage halt signal.
+    assign halt = D_halt;
+    
     // ---------------------------------------------------------
     // FETCH STAGE
     // ---------------------------------------------------------

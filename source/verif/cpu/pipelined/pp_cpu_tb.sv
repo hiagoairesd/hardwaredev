@@ -2,49 +2,82 @@
 //==============================================================================
 // pp_cpu_tb.sv
 //
-// Testbench for: pp_cpu (MIPS-like pipelined CPU)
+// Testbench for: pp_cpu (MIPS-like 5-stage pipelined CPU: F/D/E/M/W)
 //
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
 //   - Applies reset, runs the CPU for up to max_cycles cycles
-//   - Terminates when DUT raises halt==1 (HALT instruction observed by DUT)
+//   - Terminates when DUT raises HALT (decoded in the Decode stage) and lets
+//     in-flight instructions drain before checking architectural state
 //   - Checks architectural state (register file + data memory) at end
 //
 // ASSUMPTIONS / CONTRACT (IMPORTANT)
 //   - Instruction memory is indexed by "PC word index" (PC unit = 1 instruction).
 //   - Data memory is indexed by word index (addr unit = 1 position, not bytes).
-//     Example: sw rt, 1(r0) writes data_mem[1].
-//   - DUT exposes internal debug signals used by this TB:
-//       DUT.pc, DUT.instr, DUT.opcode, DUT.pc_next
-//       DUT.regWrite, DUT.wa3, DUT.rf_wdata
-//       DUT.memWrite, DUT.alu_out, DUT.mem_data_in
-//       DUT.take_branch, DUT.jump
+//     Example: sw rt, 1(r0) writes data_mem.mem[1].
+//   - Unlike sc_cpu/mc_cpu, pp_cpu's internal signals carry a per-stage prefix
+//     (F_/D_/E_/M_/W_) because up to 5 instructions are in flight at once, one
+//     per pipeline register. DUT exposes internal debug signals used by this TB:
+//       Fetch   : F_PC, F_instr, F_PCjump, F_stall
+//       Decode  : D_instr, D_rs, D_rt, D_branch, D_take_branch,
+//                 D_branchOperandA, D_branchOperandB, D_PCbranch, D_jump,
+//                 D_CLR (squash), D_EN (!D_stall)
+//       Execute : E_rs, E_rt, E_wa3, E_forwardA, E_forwardB, E_flush
+//       Memory  : M_aluOut, M_memWrite, M_writeData
+//       Writeback: W_regWrite, W_wa3, W_rf_in
+//       Hazard unit (submodule instance DUT.hazard_unit): lw_stall, branch_stall
+//         (internal wires, not ports -- probed hierarchically, same as
+//         DUT.control_unit.state is probed in mc_cpu_tb)
+//       Memories/regfile: DUT.instr_mem.ROM, DUT.data_mem.mem, DUT.register_file.regs
 //   - HALT handling:
-//       DUT asserts halt==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
-//       TB ends execution as soon as halt is observed (posedge clk polling).
+//       pp_cpu's control_unit asserts D_halt in the Decode stage when it decodes
+//       HALT (e.g., 32'hFC000000); pp_cpu.v drives its top-level `halt` output
+//       port from D_halt (`assign halt = D_halt;`), same contract as sc_cpu/mc_cpu,
+//       so this TB polls `DUT.halt` in run_test() like the other two testbenches.
+//       Because HALT is detected in Decode while older instructions are still
+//       draining through E/M/W, run_test() waits `drain_cycles` additional
+//       cycles after halt_seen before running the architectural checks.
 //
 // PLUSARGS
 //   +test=<id>      : selects which program to load / which checker to run
-//   +trace          : lightweight trace (PC/instr each cycle)
-//   +trace_w        : detailed trace (REGWRITE/MEMWRITE/BRANCH/JUMP), commits as they retire
-//   +trace_m        : pipe diagram (which PC occupies each of F/D/E/M/W this cycle, or "bubble")
-//   +trace_h        : hazard trace (STALL/FLUSH/FORWARD events from the hazard unit)
+//   +trace          : lightweight trace (PC/instr each cycle); implies trace_w
+//                     unless trace_w/trace_m/trace_h were already requested
+//   +trace_w        : commit trace (REGWRITE/MEMWRITE/BRANCH/JUMP), each event
+//                     printed from the stage that actually owns it (W for
+//                     regwrite, M for memwrite, D for branch/jump)
+//   +trace_m        : pipe diagram (which PC occupies each of F/D/E/M/W this
+//                     cycle, or "bubble" if that stage was squashed) -- the
+//                     pipeline-specific counterpart to mc_cpu_tb's FSM-state
+//                     trace, since pp_cpu has no single "current state" to print
+//   +trace_h        : hazard trace (STALL/FLUSH/FORWARD events from the hazard
+//                     unit) -- the pipeline-specific counterpart to sc_cpu_tb's
+//                     branch/jump trace, since overlapping instructions create
+//                     hazards that neither sc_cpu nor mc_cpu can have
 //
 // TRACE OUTPUT FORMAT (when enabled)
-//   - "t=... [PC = ...] [Instr = ...]"
-//   - ">>> REGWRITE | R<idx> <= <data> (Committed)"
-//   - ">>> MEMWRITE | mem[<addr>] <= <data>"
-//   - ">>> JUMP -> Target: <...>" / ">>> BRANCH Taken -> Target: <...>"
-//   - "[PIPE] F:<pc> D:<pc|bubble> E:<pc|bubble> M:<pc|bubble> W:<pc|bubble>"
-//   - "[HZ] STALL(lw|br):... FLUSH(J|B->pc) FWD_EX[A:M/W(Rn) B:M/W(Rn)] FWD_DE[A:M(Rn) B:M(Rn)]"
-//     (one line per cycle, only the tags that are active that cycle are printed)
-//   - "-> HALT detected @t (PC=...)"
-//
+//   - "t=<time> [PC = <n>] [Instr = <hex>]"                                    (trace)
+//   - "t=<time>    >>> REGWRITE | R<idx> <= <data> (Committed)"                (trace_w)
+//   - "t=<time>    >>> MEMWRITE | mem[<addr>] <= <data>"                       (trace_w)
+//   - "t=<time>    >>> JUMP -> Target: <pc>"                                   (trace_w)
+//   - "t=<time>    >>> BRANCH Taken -> Target: <pc>"                          (trace_w)
+//   - "t=<time>    >>> BRANCH EVAL | rs=R<n>(<data>) rt=R<n>(<data>) take=<0|1>" (trace_w)
+//   - "t=<time> [PIPE] F:<pc> D:<pc|bubble> E:<pc|bubble> M:<pc|bubble> W:<pc|bubble>" (trace_m)
+//   - "t=<time>    [HZ] STALL(lw|br):... FLUSH(J|B->pc) FWD_EX[A:M/W(Rn) B:M/W(Rn)] FWD_DE[A:M(Rn) B:M(Rn)]"
+//     (trace_h; one line per cycle, only the tags active that cycle are printed)
+//   - "-> HALT detected @t (PC=0x<F_PC>)"
 //
 // HOW TO DEBUG QUICKLY
-//   - Timeout: program missing HALT or control-flow bug (branch/jump/PC update).
+//   - Timeout: program missing HALT, or control-flow bug (branch/jump/PC update).
 //   - Wrong MEMWRITE address: check ALU addr calc + immediate sign/zero-extend.
 //   - Wrong branch decisions: check comparator policy (signed vs unsigned) and SLT.
+//   - Wrong value only when a dependent instruction directly follows a producer:
+//     suspect a missing/incorrect forwarding path -- use +trace_h and look at
+//     FWD_EX/FWD_DE around that PC.
+//   - Wrong value or a stall that never resolves after a load: suspect the
+//     load-use stall logic -- use +trace_h and look for STALL(lw); if it never
+//     fires where expected, check hazard_unit's lw_stall condition.
+//   - To see exactly which instruction occupies which stage (and where the
+//     bubbles are) on a given cycle, use +trace_m ([PIPE] line).
 //==============================================================================
 
 `define ANSI_RED  "\033[31m"
@@ -84,7 +117,7 @@ module pp_cpu_tb();
     // Trace controls (from +trace / +trace_w / +trace_m / +trace_h)
     bit trace, trace_w, trace_m, trace_h;
 
-    // DUT-provided halt indication
+    // DUT-provided halt indication (pp_cpu.v drives this via `assign halt = D_halt;`).
     wire halt;
 
     //==============================================================================
@@ -146,7 +179,7 @@ module pp_cpu_tb();
     end
 
     //==============================================================================
-    // 6.5) Pipeline occupancy shadow tracker (TB-only bookkeeping for trace_m)
+    // 7) Pipeline occupancy shadow tracker (TB-only bookkeeping for trace_m)
     //==============================================================================
     // pp_cpu's E/M/W stage registers carry control bits and data, but not a PC of their
     // own -- unlike F (F_PC) and D (D_PCplus4), there is no DUT signal that says "which
@@ -186,7 +219,7 @@ module pp_cpu_tb();
     end
 
     //==============================================================================
-    // 7) Monitors / Trace (passive observers only)
+    // 8) Monitors / Trace (passive observers only)
     //==============================================================================
     // Single synchronized debug block
     always @(posedge clk) begin
@@ -295,7 +328,7 @@ module pp_cpu_tb();
     end
 
     //==============================================================================
-    // 8) Program loading utilities
+    // 9) Program loading utilities
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -339,7 +372,7 @@ module pp_cpu_tb();
     endtask
 
     //==============================================================================
-    // 9) Check helpers (generic)
+    // 10) Check helpers (generic)
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -397,7 +430,7 @@ module pp_cpu_tb();
     endtask
 
     //==============================================================================
-    // 10) Test-specific checks (catalog grouped)
+    // 11) Test-specific checks (catalog grouped)
     //==============================================================================
 
     // regs_test()
@@ -936,7 +969,7 @@ module pp_cpu_tb();
     endtask
 
     //==============================================================================
-    // 11) Test sequencer (stimulus + termination + checking)
+    // 12) Test sequencer (stimulus + termination + checking)
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -978,7 +1011,7 @@ module pp_cpu_tb();
             // 4) Run loop: stop at HALT or after max_cycles
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
-                if (DUT.D_halt) begin
+                if (DUT.halt) begin
                     halt_seen = 1'b1;
                     $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.F_PC);
                     i = max_cycles; // Icarus workaround to break loop
@@ -1029,7 +1062,7 @@ module pp_cpu_tb();
     endtask
     
     //==============================================================================
-    // 12) Main (entry point)
+    // 13) Main (entry point)
     //==============================================================================
     // Entry point: runs selected test (from +test=<id>) and ends simulation.
     initial begin
