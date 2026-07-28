@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+chmod +x setup.sh#!/usr/bin/env bash
 #==============================================================================
 # check_env.sh - Configuration health check script
 #==============================================================================
@@ -51,7 +51,7 @@ else
     ((FAILED++))
 fi
 
-if [[ -d "$DESIGN_DIR/single_cycle" ]]; then
+if [[ -d "$DESIGN_DIR/cpu/single_cycle" ]]; then
     echo -e "${GREEN}[OK]${NC} Single-cycle designs found"
     ((PASSED++))
 else

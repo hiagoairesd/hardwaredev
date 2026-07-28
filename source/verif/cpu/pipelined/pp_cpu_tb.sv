@@ -1,45 +1,83 @@
 `timescale 1ns/1ps
 //==============================================================================
-// cpu_mc_tb.sv
+// pp_cpu_tb.sv
 //
-// Testbench for: cpu_mc (MIPS-like multi-cycle CPU)
+// Testbench for: pp_cpu (MIPS-like 5-stage pipelined CPU: F/D/E/M/W)
 //
 // PURPOSE
 //   - Loads a program into DUT instruction memory (readmemh)
 //   - Applies reset, runs the CPU for up to max_cycles cycles
-//   - Terminates when DUT raises halt==1 (HALT instruction observed by DUT)
+//   - Terminates when DUT raises HALT (decoded in the Decode stage) and lets
+//     in-flight instructions drain before checking architectural state
 //   - Checks architectural state (register file + data memory) at end
 //
 // ASSUMPTIONS / CONTRACT (IMPORTANT)
 //   - Instruction memory is indexed by "PC word index" (PC unit = 1 instruction).
 //   - Data memory is indexed by word index (addr unit = 1 position, not bytes).
-//     Example: sw rt, 1(r0) writes data_mem[1].
-//   - DUT exposes internal debug signals used by this TB:
-//       DUT.pc, DUT.instr, DUT.opcode, DUT.pc_next
-//       DUT.regWrite, DUT.wa3, DUT.rf_wdata
-//       DUT.memWrite, DUT.alu_out, DUT.mem_data_in
-//       DUT.take_branch, DUT.jump
+//     Example: sw rt, 1(r0) writes data_mem.mem[1].
+//   - Unlike sc_cpu/mc_cpu, pp_cpu's internal signals carry a per-stage prefix
+//     (F_/D_/E_/M_/W_) because up to 5 instructions are in flight at once, one
+//     per pipeline register. DUT exposes internal debug signals used by this TB:
+//       Fetch   : F_PC, F_instr, F_PCjump, F_stall
+//       Decode  : D_instr, D_rs, D_rt, D_branch, D_take_branch,
+//                 D_branchOperandA, D_branchOperandB, D_PCbranch, D_jump,
+//                 D_CLR (squash), D_EN (!D_stall)
+//       Execute : E_rs, E_rt, E_wa3, E_forwardA, E_forwardB, E_flush
+//       Memory  : M_aluOut, M_memWrite, M_writeData
+//       Writeback: W_regWrite, W_wa3, W_rf_in
+//       Hazard unit (submodule instance DUT.hazard_unit): lw_stall, branch_stall
+//         (internal wires, not ports -- probed hierarchically, same as
+//         DUT.control_unit.state is probed in mc_cpu_tb)
+//       Memories/regfile: DUT.instr_mem.ROM, DUT.data_mem.mem, DUT.register_file.regs
 //   - HALT handling:
-//       DUT asserts halt==1 when it fetches/decodes HALT (e.g., 32'hFC000000).
-//       TB ends execution as soon as halt is observed (posedge clk polling).
+//       pp_cpu's control_unit asserts D_halt in the Decode stage when it decodes
+//       HALT (e.g., 32'hFC000000); pp_cpu.v drives its top-level `halt` output
+//       port from D_halt (`assign halt = D_halt;`), same contract as sc_cpu/mc_cpu,
+//       so this TB polls `DUT.halt` in run_test() like the other two testbenches.
+//       Because HALT is detected in Decode while older instructions are still
+//       draining through E/M/W, run_test() waits `drain_cycles` additional
+//       cycles after halt_seen before running the architectural checks.
 //
 // PLUSARGS
 //   +test=<id>      : selects which program to load / which checker to run
-//   +trace          : lightweight trace (PC/instr/opcode each cycle), implies trace_w
-//   +trace_w        : detailed trace (REGWRITE/MEMWRITE/BRANCH/JUMP)
+//   +trace          : lightweight trace (PC/instr each cycle); implies trace_w
+//                     unless trace_w/trace_m/trace_h were already requested
+//   +trace_w        : commit trace (REGWRITE/MEMWRITE/BRANCH/JUMP), each event
+//                     printed from the stage that actually owns it (W for
+//                     regwrite, M for memwrite, D for branch/jump)
+//   +trace_m        : pipe diagram (which PC occupies each of F/D/E/M/W this
+//                     cycle, or "bubble" if that stage was squashed) -- the
+//                     pipeline-specific counterpart to mc_cpu_tb's FSM-state
+//                     trace, since pp_cpu has no single "current state" to print
+//   +trace_h        : hazard trace (STALL/FLUSH/FORWARD events from the hazard
+//                     unit) -- the pipeline-specific counterpart to sc_cpu_tb's
+//                     branch/jump trace, since overlapping instructions create
+//                     hazards that neither sc_cpu nor mc_cpu can have
 //
 // TRACE OUTPUT FORMAT (when enabled)
-//   - "t=... pc=... instr=... opcode=..."
-//   - "t=... | REGWRITE | R<idx> <= <data>"
-//   - "t=... | MEMWRITE | mem[<addr>] <= <data>"
-//   - "t=... | BRANCH taken -> pc_next=<...>"
-//   - "t=... | JUMP -> pc_next=<...>"
-//   - "-> HALT detected @t (PC=...)"
+//   - "t=<time> [PC = <n>] [Instr = <hex>]"                                    (trace)
+//   - "t=<time>    >>> REGWRITE | R<idx> <= <data> (Committed)"                (trace_w)
+//   - "t=<time>    >>> MEMWRITE | mem[<addr>] <= <data>"                       (trace_w)
+//   - "t=<time>    >>> JUMP -> Target: <pc>"                                   (trace_w)
+//   - "t=<time>    >>> BRANCH Taken -> Target: <pc>"                          (trace_w)
+//   - "t=<time>    >>> BRANCH EVAL | rs=R<n>(<data>) rt=R<n>(<data>) take=<0|1>" (trace_w)
+//   - "t=<time> [PIPE] F:<pc> D:<pc|bubble> E:<pc|bubble> M:<pc|bubble> W:<pc|bubble>" (trace_m)
+//   - "t=<time>    [HZ] STALL(lw|br):... FLUSH(J|B->pc) FWD_EX[A:M/W(Rn) B:M/W(Rn)] FWD_DE[A:M(Rn) B:M(Rn)]"
+//     (trace_h; one line per cycle, only the tags active that cycle are printed)
+//   - "-> HALT detected @t (PC=0x<F_PC>)"
 //
 // HOW TO DEBUG QUICKLY
-//   - Timeout: program missing HALT or control-flow bug (branch/jump/PC update).
+//   - Timeout: program missing HALT, or control-flow bug (branch/jump/PC update).
 //   - Wrong MEMWRITE address: check ALU addr calc + immediate sign/zero-extend.
 //   - Wrong branch decisions: check comparator policy (signed vs unsigned) and SLT.
+//   - Wrong value only when a dependent instruction directly follows a producer:
+//     suspect a missing/incorrect forwarding path -- use +trace_h and look at
+//     FWD_EX/FWD_DE around that PC.
+//   - Wrong value or a stall that never resolves after a load: suspect the
+//     load-use stall logic -- use +trace_h and look for STALL(lw); if it never
+//     fires where expected, check hazard_unit's lw_stall condition.
+//   - To see exactly which instruction occupies which stage (and where the
+//     bubbles are) on a given cycle, use +trace_m ([PIPE] line).
 //==============================================================================
 
 `define ANSI_RED  "\033[31m"
@@ -48,7 +86,7 @@
 `define ANSI_BOLD "\033[1m"
 `define ANSI_RST  "\033[0m"
 
-module cpu_mc_tb();
+module pp_cpu_tb();
 
     //==============================================================================
     // 1) Parameters / Localparams / TB defaults
@@ -58,10 +96,12 @@ module cpu_mc_tb();
     // (DUT may have its own internal width/behavior).
     localparam int ADDR_W = 32;
     localparam int DATA_W = 32;
+    localparam int DEPTH  = 256;
 
     // Maximum number of cycles the TB will allow before declaring TIMEOUT.
     // This is a safety net to prevent infinite simulations if HALT is not reached.
     integer max_cycles = 2500;
+    integer drain_cycles = 4;
 
     //==============================================================================
     // 2) Signals (TB <-> DUT) + TB runtime config
@@ -74,23 +114,24 @@ module cpu_mc_tb();
     // Selected test id (from +test=<id>)
     integer test_id;
 
-    // Trace controls (from +trace / +trace_w / +trace_m)
-    bit trace, trace_w, trace_m;
+    // Trace controls (from +trace / +trace_w / +trace_m / +trace_h)
+    bit trace, trace_w, trace_m, trace_h;
 
-    // DUT-provided halt indication
+    // DUT-provided halt indication (pp_cpu.v drives this via `assign halt = D_halt;`).
     wire halt;
 
     //==============================================================================
     // 3) DUT instantiation
     //==============================================================================
 
-    cpu_mc #(
-        .DATA_W(DATA_W),
-        .ADDR_W(ADDR_W)
+    pp_cpu #(
+        .DATA_W (DATA_W),
+        .ADDR_W (ADDR_W),
+        .DEPTH  (DEPTH)
     ) DUT (
         .clk    (clk),
         .rst    (rst),
-        .halt (halt)
+        .halt   (halt)
     );
 
     //==============================================================================
@@ -100,7 +141,7 @@ module cpu_mc_tb();
     // Free-running clock. All TB stimulus/checks are synchronized to posedge clk.
     initial begin
         clk = 1'b0;
-        forever #5 clk = ~clk;
+        forever #1 clk = ~clk;
     end
 
     //==============================================================================
@@ -109,8 +150,8 @@ module cpu_mc_tb();
 
     // Always dump waveforms for debug. If you prefer, guard with +dump.
     initial begin
-        $dumpfile("cpu_mc.vcd");
-        $dumpvars(0, cpu_mc_tb);
+        $dumpfile("pp_cpu.vcd");
+        $dumpvars(0, pp_cpu_tb);
     end
 
     //==============================================================================
@@ -122,10 +163,12 @@ module cpu_mc_tb();
         // trace modes:
         //   +trace_w : detailed (writes/branches/jumps)
         //   +trace   : lightweight (pc/instr/opcode) AND forces trace_w
-        //   +trace_m : microarchitectural (internal signals like reg A/B, ALU out)
+        //   +trace_m : pipe diagram (which PC occupies each of F/D/E/M/W this cycle, or "bubble")
+        //   +trace_h : hazard trace (stall/flush/forward events from the hazard unit)
         trace_w = $test$plusargs("trace_w");
-        trace   = $test$plusargs("trace") && !trace_w;
         trace_m = $test$plusargs("trace_m");
+        trace_h = $test$plusargs("trace_h");
+        trace   = $test$plusargs("trace") && !(trace_w || trace_h || trace_m);
         if (trace) trace_w = 1'b1;
 
         // test selection: +test=<id>
@@ -136,46 +179,156 @@ module cpu_mc_tb();
     end
 
     //==============================================================================
-    // 7) Monitors / Trace (passive observers only)
+    // 7) Pipeline occupancy shadow tracker (TB-only bookkeeping for trace_m)
+    //==============================================================================
+    // pp_cpu's E/M/W stage registers carry control bits and data, but not a PC of their
+    // own -- unlike F (F_PC) and D (D_PCplus4), there is no DUT signal that says "which
+    // instruction is sitting in Execute/Memory/Writeback right now". These shadow
+    // registers are clocked with the exact same enable/flush conditions as the real
+    // D/E/M/W flip-flops in pp_cpu (D_CLR, D_EN, E_flush), so they track PC identity
+    // through the pipeline without altering or reading back any extra DUT state.
+    reg [ADDR_W-1:0] pipe_D_pc, pipe_E_pc, pipe_M_pc, pipe_W_pc;
+    reg               pipe_D_v, pipe_E_v, pipe_M_v, pipe_W_v;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            pipe_D_v  <= 1'b0; pipe_E_v  <= 1'b0; pipe_M_v  <= 1'b0; pipe_W_v  <= 1'b0;
+            pipe_D_pc <= {ADDR_W{1'b0}}; pipe_E_pc <= {ADDR_W{1'b0}};
+            pipe_M_pc <= {ADDR_W{1'b0}}; pipe_W_pc <= {ADDR_W{1'b0}};
+        end else begin
+            // Decode: squashed on branch/jump (D_CLR), held on stall (!D_EN), else loads Fetch's PC.
+            if (DUT.D_CLR) begin
+                pipe_D_v <= 1'b0;
+            end else if (DUT.D_EN) begin
+                pipe_D_v  <= 1'b1;
+                pipe_D_pc <= DUT.F_PC;
+            end
+            // Execute: squashed on a hazard-induced bubble (E_flush), else always advances from Decode.
+            if (DUT.E_flush) begin
+                pipe_E_v <= 1'b0;
+            end else begin
+                pipe_E_v  <= pipe_D_v;
+                pipe_E_pc <= pipe_D_pc;
+            end
+            // Memory / Writeback registers have no enable or flush input in the RTL: always advance.
+            pipe_M_v  <= pipe_E_v;
+            pipe_M_pc <= pipe_E_pc;
+            pipe_W_v  <= pipe_M_v;
+            pipe_W_pc <= pipe_M_pc;
+        end
+    end
+
+    //==============================================================================
+    // 8) Monitors / Trace (passive observers only)
     //==============================================================================
     // Single synchronized debug block
     always @(posedge clk) begin
         // Tiny delay (#1) to ensure all internal signals to stabilize after the clock edge
         #1;
         if (!rst) begin
-            // 1. Primary Trace (Time, PC, Instr, State)
+            // 1. Primary Trace (Time, PC, Instr)
             if (trace) begin
-                $display("t=%0t [PC=%0d] [Instr=%08h] [State=%s]",
-                         $time, DUT.pc, DUT.instr, get_state_name(DUT.control_unit.state));
+                $display("t = %0t [PC = %0d] [Instr = %08h]",
+                         $time, DUT.F_PC, DUT.F_instr);
             end
-            // 2. Internal Microarchitecture Trace (A, B, ALUOut)
+            // 2. Pipe Diagram Trace: which instruction (by PC) occupies each stage this
+            //    cycle, or "bubble" if that stage was squashed by a flush/stall. This is
+            //    the pipeline-specific counterpart to mc's FSM-state trace: mc has one
+            //    instruction moving through states, pp has up to 5 instructions moving
+            //    through stages, so seeing WHERE each one is (and where the bubbles are)
+            //    is the useful "internal" view here.
             if (trace_m) begin
-                $display("   [INTERNAL] A=%h | B=%h | ALUOut=%h | State=%0d", 
-                         DUT.rf_regA, DUT.rf_regB, DUT.alu_reg, DUT.control_unit.state);
+                string d_s, e_s, m_s, w_s;
+                if (pipe_D_v) d_s = $sformatf("%0d", pipe_D_pc); else d_s = "bubble";
+                if (pipe_E_v) e_s = $sformatf("%0d", pipe_E_pc); else e_s = "bubble";
+                if (pipe_M_v) m_s = $sformatf("%0d", pipe_M_pc); else m_s = "bubble";
+                if (pipe_W_v) w_s = $sformatf("%0d", pipe_W_pc); else w_s = "bubble";
+                $display("t=%0t [PIPE] F:%0d D:%s E:%s M:%s W:%s",
+                         $time, DUT.F_PC, d_s, e_s, m_s, w_s);
             end
             // 3. Writeback/Commit Trace (Events)
             if (trace_w) begin
                 // Register Write
-                if (DUT.regWrite && (DUT.control_unit.state == 4'd4 || DUT.control_unit.state == 4'd7 || DUT.control_unit.state == 4'd9)) begin
-                    $display("   >>> REGWRITE | R%0d <= %08h (Committed)", DUT.wa3, DUT.rf_wdata);
+                if (DUT.W_regWrite) begin
+                    $display("t=%0t    >>> REGWRITE | R%0d <= %08h (Committed)", $time, DUT.W_wa3, DUT.W_rf_in);
                 end
                 // Memory Write
-                if (DUT.memWrite && DUT.control_unit.state == 4'd5) begin
-                    $display("   >>> MEMWRITE | mem[%0d] <= %08h", DUT.alu_out, DUT.mem_data_in);
+                if (DUT.M_memWrite) begin
+                    $display("t=%0t    >>> MEMWRITE | mem[%0d] <= %08h", $time, DUT.M_aluOut, DUT.M_writeData);
                 end
                 // Jump / Branch Events
-                if (DUT.control_unit.state == 4'd10) begin
-                    $display("   >>> JUMP -> Target: %0d", DUT.pc_next);
+                if (DUT.D_jump) begin
+                    $display("t=%0t    >>> JUMP -> Target: %0d", $time, DUT.F_PCjump);
                 end
-                if (DUT.control_unit.state == 4'd8 && DUT.control_unit.take_branch) begin
-                    $display("   >>> BRANCH Taken -> Target: %0d", DUT.pc_next);
+                if (DUT.D_take_branch) begin
+                    $display("t=%0t    >>> BRANCH Taken -> Target: %0d", $time, DUT.D_PCbranch);
                 end
+                if (DUT.D_branch) begin
+                    $display("t=%0t    >>> BRANCH EVAL | rs=R%0d(%08h) rt=R%0d(%08h) take=%0b",
+                             $time, DUT.D_rs, DUT.D_branchOperandA, DUT.D_rt, DUT.D_branchOperandB, DUT.D_take_branch);
+                end
+            end
+            // 4. Hazard Trace (Events): stall / flush / forward decisions from the hazard unit.
+            //    This is the pipeline-specific counterpart to mc's FSM trace: instead of one
+            //    instruction moving through states, up to 5 instructions overlap here, so what
+            //    matters is how the hazard_unit keeps them from clobbering each other.
+            // All hazard events for this cycle are folded into a single line (one $display),
+            // tagged STALL/FLUSH/FWD_EX/FWD_DE, so a busy cycle stays readable instead of
+            // spilling into 4-5 separate prints. M = forwarded from Memory stage (ALU-ALU
+            // bypass), W = forwarded from Writeback stage.
+            if (trace_h) begin
+                string hz_line;
+                hz_line = "";
+                // STALL: Fetch/Decode held (and a bubble punched into Execute) because
+                // Decode's operands aren't ready yet (load-use) or a branch about to
+                // resolve needs them (branch-operand). F_stall/D_stall/E_flush always
+                // fire together in the hazard unit, so one tag covers all three.
+                if (DUT.F_stall) begin
+                    if (DUT.hazard_unit.lw_stall)
+                        hz_line = {hz_line, $sformatf("STALL(lw):R%0d,R%0d<-E.rt=R%0d ", DUT.D_rs, DUT.D_rt, DUT.E_rt)};
+                    else if (DUT.hazard_unit.branch_stall)
+                        hz_line = {hz_line, $sformatf("STALL(br):R%0d,R%0d ", DUT.D_rs, DUT.D_rt)};
+                end
+                // FLUSH: control-flow squash of the instruction just fetched into Decode.
+                if (DUT.D_CLR) begin
+                    string kind;
+                    int    target;
+                    if (DUT.D_jump) kind = "J"; else kind = "B";
+                    if (DUT.D_jump) target = DUT.F_PCjump; else target = DUT.D_PCbranch;
+                    hz_line = {hz_line, $sformatf("FLUSH(%s->%0d) ", kind, target)};
+                end
+                // FWD_EX: bypass into the ALU operands (the common RAW case: back-to-back R-type/I-type).
+                // NOTE: every conditional string piece below is built with if/else (never
+                // `cond ? "" : $sformatf(...)` or `cond ? " " : ""`) -- Icarus mishandles a
+                // ternary when one branch is a bare string literal and the other isn't (or
+                // when the two literals differ in length), silently producing wrong text.
+                if (DUT.E_forwardA != 2'b00 || DUT.E_forwardB != 2'b00) begin
+                    string a, b, sep;
+                    if (DUT.E_forwardA == 2'b00) a = "";
+                    else a = $sformatf("A:%s(R%0d)", (DUT.E_forwardA == 2'b10) ? "M" : "W", DUT.E_rs);
+                    if (DUT.E_forwardB == 2'b00) b = "";
+                    else b = $sformatf("B:%s(R%0d)", (DUT.E_forwardB == 2'b10) ? "M" : "W", DUT.E_rt);
+                    if (a != "" && b != "") sep = " "; else sep = "";
+                    hz_line = {hz_line, $sformatf("FWD_EX[%s%s%s] ", a, sep, b)};
+                end
+                // FWD_DE: bypass into the early-branch comparator (avoids a stall on beq/bne/blt).
+                if (DUT.D_forwardA || DUT.D_forwardB) begin
+                    string a, b, sep;
+                    if (DUT.D_forwardA) a = $sformatf("A:M(R%0d)", DUT.D_rs);
+                    else a = "";
+                    if (DUT.D_forwardB) b = $sformatf("B:M(R%0d)", DUT.D_rt);
+                    else b = "";
+                    if (a != "" && b != "") sep = " "; else sep = "";
+                    hz_line = {hz_line, $sformatf("FWD_DE[%s%s%s] ", a, sep, b)};
+                end
+                if (hz_line != "")
+                    $display("t=%0t    [HZ] %s", $time, hz_line);
             end
         end
     end
 
     //==============================================================================
-    // 8) Program loading utilities
+    // 9) Program loading utilities
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -191,36 +344,35 @@ module cpu_mc_tb();
     task automatic pick_test(input integer test_id);
         begin
             case(test_id)
-                1:  $readmemh("../source/verif/cpu/multi_cycle/assembly/regs.hex",                 DUT.memory.mem);
-                2:  $readmemh("../source/verif/cpu/multi_cycle/assembly/basic_swlw.hex",           DUT.memory.mem);
-                3:  $readmemh("../source/verif/cpu/multi_cycle/assembly/border_swlw.hex",          DUT.memory.mem);
-                4:  $readmemh("../source/verif/cpu/multi_cycle/assembly/rtype.hex",                DUT.memory.mem);
-                5:  $readmemh("../source/verif/cpu/multi_cycle/assembly/jump.hex",                 DUT.memory.mem);
-                6:  $readmemh("../source/verif/cpu/multi_cycle/assembly/beq.hex",                  DUT.memory.mem);
-                7:  $readmemh("../source/verif/cpu/multi_cycle/assembly/andi.hex",                 DUT.memory.mem);
-                8:  $readmemh("../source/verif/cpu/multi_cycle/assembly/ori.hex",                  DUT.memory.mem);
-                9:  $readmemh("../source/verif/cpu/multi_cycle/assembly/lui.hex",                  DUT.memory.mem);
-                10: $readmemh("../source/verif/cpu/multi_cycle/assembly/sll.hex",                  DUT.memory.mem);
-                11: $readmemh("../source/verif/cpu/multi_cycle/assembly/srl.hex",                  DUT.memory.mem);
-                12: $readmemh("../source/verif/cpu/multi_cycle/assembly/bne.hex",                  DUT.memory.mem);
-                13: $readmemh("../source/verif/cpu/multi_cycle/assembly/blt.hex",                  DUT.memory.mem);
-                14: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci.hex",            DUT.memory.mem);
-                15: $readmemh("../source/verif/cpu/multi_cycle/assembly/fibonacci_overflow.hex",   DUT.memory.mem);
-                16: $readmemh("../source/verif/cpu/multi_cycle/assembly/zero_register_protection.hex", DUT.memory.mem);
-                17: $readmemh("../source/verif/cpu/multi_cycle/assembly/halt_placement.hex",       DUT.memory.mem);
-                18: $readmemh("../source/verif/cpu/multi_cycle/assembly/loop_counter.hex",         DUT.memory.mem);
-                19: $readmemh("../source/verif/cpu/multi_cycle/assembly/array_sum.hex",            DUT.memory.mem);
-                20: $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",          DUT.memory.mem);
-                100: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_mem_invasion.hex",   DUT.memory.mem);
-                101: $readmemh("../source/verif/cpu/multi_cycle/assembly/test_instr_overflow.hex", DUT.memory.mem);
+                1:  $readmemh("../source/verif/cpu/common/assembly/regs.hex",                 DUT.instr_mem.ROM);
+                2:  $readmemh("../source/verif/cpu/common/assembly/basic_swlw.hex",           DUT.instr_mem.ROM);
+                3:  $readmemh("../source/verif/cpu/common/assembly/border_swlw.hex",          DUT.instr_mem.ROM);
+                4:  $readmemh("../source/verif/cpu/common/assembly/rtype.hex",                DUT.instr_mem.ROM);
+                5:  $readmemh("../source/verif/cpu/common/assembly/jump.hex",                 DUT.instr_mem.ROM);
+                6:  $readmemh("../source/verif/cpu/common/assembly/beq.hex",                  DUT.instr_mem.ROM);
+                7:  $readmemh("../source/verif/cpu/common/assembly/andi.hex",                 DUT.instr_mem.ROM);
+                8:  $readmemh("../source/verif/cpu/common/assembly/ori.hex",                  DUT.instr_mem.ROM);
+                9:  $readmemh("../source/verif/cpu/common/assembly/lui.hex",                  DUT.instr_mem.ROM);
+                10: $readmemh("../source/verif/cpu/common/assembly/sll.hex",                  DUT.instr_mem.ROM);
+                11: $readmemh("../source/verif/cpu/common/assembly/srl.hex",                  DUT.instr_mem.ROM);
+                12: $readmemh("../source/verif/cpu/common/assembly/bne.hex",                  DUT.instr_mem.ROM);
+                13: $readmemh("../source/verif/cpu/common/assembly/blt.hex",                  DUT.instr_mem.ROM);
+                14: $readmemh("../source/verif/cpu/common/assembly/fibonacci.hex",            DUT.instr_mem.ROM);
+                15: $readmemh("../source/verif/cpu/common/assembly/fibonacci_overflow.hex",   DUT.instr_mem.ROM);
+                16: $readmemh("../source/verif/cpu/common/assembly/zero_register_protection.hex", DUT.instr_mem.ROM);
+                17: $readmemh("../source/verif/cpu/common/assembly/halt_placement.hex",       DUT.instr_mem.ROM);
+                18: $readmemh("../source/verif/cpu/common/assembly/loop_counter.hex",         DUT.instr_mem.ROM);
+                19: $readmemh("../source/verif/cpu/common/assembly/array_sum.hex",            DUT.instr_mem.ROM);
+                20: $readmemh("../source/verif/cpu/pipelined/assembly/mipstest.hex",          DUT.instr_mem.ROM);
+                21: $readmemh("../source/verif/cpu/common/assembly/integration.hex",          DUT.instr_mem.ROM);
                 default:
-                    $readmemh("../source/verif/cpu/multi_cycle/assembly/integration.hex",        DUT.memory.mem);
+                    $readmemh("../source/verif/cpu/common/assembly/integration.hex",          DUT.instr_mem.ROM);
             endcase
         end
     endtask
 
     //==============================================================================
-    // 9) Check helpers (generic)
+    // 10) Check helpers (generic)
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -278,7 +430,7 @@ module cpu_mc_tb();
     endtask
 
     //==============================================================================
-    // 10) Test-specific checks (catalog grouped)
+    // 11) Test-specific checks (catalog grouped)
     //==============================================================================
 
     // regs_test()
@@ -317,7 +469,7 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, " RUNNING BASIC SW/LW TESTS [2] ", `ANSI_RST});
             $display({`ANSI_BOLD, "--------", `ANSI_RST});
             check_reg(1, DUT.register_file.regs[1], 32'd42);
-            check_mem(128, DUT.memory.mem[128], 32'd42);
+            check_mem(128, DUT.data_mem.mem[128], 32'd42);
             check_reg(2, DUT.register_file.regs[2], 32'd42);
         end
     endtask
@@ -339,7 +491,7 @@ module cpu_mc_tb();
             check_reg(1, DUT.register_file.regs[1],           32'd32767);
             check_reg(2, DUT.register_file.regs[2],          -32'sd32768);
             check_reg(3, DUT.register_file.regs[3],          -32'sd1);
-            check_mem(mem_word_idx, DUT.memory.mem[mem_word_idx], -32'sd1);
+            check_mem(mem_word_idx, DUT.data_mem.mem[mem_word_idx], -32'sd1);
             check_reg(4, DUT.register_file.regs[4],          -32'sd1);
             check_reg(5, DUT.register_file.regs[5],           32'd0);
         end
@@ -413,7 +565,7 @@ module cpu_mc_tb();
     // Test goal:
     //   - Validates ANDI zero-extension and bit masking (test_id=7).
     // PASS criteria:
-    //   - Expected regs + memory results.
+    //   - Expected regs + data_mem results.
     //------------------------------------------------------------------------------
     task automatic andi_test;
         begin
@@ -424,8 +576,8 @@ module cpu_mc_tb();
             check_reg(2, DUT.register_file.regs[2], 32'd305398015);
             check_reg(3, DUT.register_file.regs[3], 32'd15);
             check_reg(4, DUT.register_file.regs[4], 32'd240);
-            check_mem(128, DUT.memory.mem[128], 32'd15);
-            check_mem(132, DUT.memory.mem[132], 32'd240);
+            check_mem(128, DUT.data_mem.mem[128], 32'd15);
+            check_mem(132, DUT.data_mem.mem[132], 32'd240);
         end
     endtask
 
@@ -446,8 +598,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd241);
             check_reg(4, DUT.register_file.regs[4], 32'd3855);
             check_reg(5, DUT.register_file.regs[5], 32'd4095);
-            check_mem(128, DUT.memory.mem[128], 32'd241);
-            check_mem(132, DUT.memory.mem[132], 32'd4095);
+            check_mem(128, DUT.data_mem.mem[128], 32'd241);
+            check_mem(132, DUT.data_mem.mem[132], 32'd4095);
         end
     endtask
 
@@ -467,9 +619,9 @@ module cpu_mc_tb();
             check_reg(2, DUT.register_file.regs[2], 32'd0);
             check_reg(3, DUT.register_file.regs[3], 32'd4294901760);
             check_reg(4, DUT.register_file.regs[4], 32'd305441741);
-            check_mem(128, DUT.memory.mem[128], 32'd305397760);
-            check_mem(132, DUT.memory.mem[132], 32'd4294901760);
-            check_mem(136, DUT.memory.mem[136], 32'd305441741);
+            check_mem(128, DUT.data_mem.mem[128], 32'd305397760);
+            check_mem(132, DUT.data_mem.mem[132], 32'd4294901760);
+            check_mem(136, DUT.data_mem.mem[136], 32'd305441741);
         end
     endtask
 
@@ -490,8 +642,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd32);
             check_reg(4, DUT.register_file.regs[4], 32'd240);
             check_reg(5, DUT.register_file.regs[5], 32'd61440);
-            check_mem(128, DUT.memory.mem[128], 32'd16);
-            check_mem(132, DUT.memory.mem[132], 32'd61440);
+            check_mem(128, DUT.data_mem.mem[128], 32'd16);
+            check_mem(132, DUT.data_mem.mem[132], 32'd61440);
         end
     endtask
 
@@ -512,8 +664,8 @@ module cpu_mc_tb();
             check_reg(3, DUT.register_file.regs[3], 32'd240);
             check_reg(4, DUT.register_file.regs[4], 32'd15);
             check_reg(5, DUT.register_file.regs[5], 32'd0);
-            check_mem(128, DUT.memory.mem[128], 32'd1073741824);
-            check_mem(132, DUT.memory.mem[132], 32'd15);
+            check_mem(128, DUT.data_mem.mem[128], 32'd1073741824);
+            check_mem(132, DUT.data_mem.mem[132], 32'd15);
         end
     endtask
 
@@ -535,7 +687,7 @@ module cpu_mc_tb();
             check_reg(4, DUT.register_file.regs[4], 32'd5);
             check_reg(5, DUT.register_file.regs[5], 32'd5);
             check_reg(6, DUT.register_file.regs[6], 32'd13107);
-            check_mem(128, DUT.memory.mem[128], 32'd13107);
+            check_mem(128, DUT.data_mem.mem[128], 32'd13107);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -550,9 +702,9 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING BLT TESTS [13] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------------", `ANSI_RST});
-            check_mem(128, DUT.memory.mem[128], 32'd1);
-            check_mem(129, DUT.memory.mem[129], 32'd1);
-            check_mem(130, DUT.memory.mem[130], 32'd1);
+            check_mem(128, DUT.data_mem.mem[128], 32'd1);
+            check_mem(129, DUT.data_mem.mem[129], 32'd1);
+            check_mem(130, DUT.data_mem.mem[130], 32'd1);
         end
     endtask
     //------------------------------------------------------------------------------
@@ -575,29 +727,29 @@ module cpu_mc_tb();
                 check_reg(5, DUT.register_file.regs[5],  32'h0014);
                 check_reg(6, DUT.register_file.regs[6],  32'h0050);
                 check_reg(7, DUT.register_file.regs[7],  32'h0001);
-                check_mem(128, DUT.memory.mem[128],  32'h0000);
-                check_mem(129, DUT.memory.mem[129],  32'h0001);
-                check_mem(130, DUT.memory.mem[130],  32'h0001);
-                check_mem(131, DUT.memory.mem[131],  32'h0002);
-                check_mem(132, DUT.memory.mem[132],  32'h0003);
-                check_mem(133, DUT.memory.mem[133],  32'h0005);
-                check_mem(134, DUT.memory.mem[134],  32'h0008);
-                check_mem(135, DUT.memory.mem[135],  32'h000D);
-                check_mem(136, DUT.memory.mem[136],  32'h0015);
-                check_mem(137, DUT.memory.mem[137],  32'h0022);
-                check_mem(138, DUT.memory.mem[138], 32'h0037);
-                check_mem(139, DUT.memory.mem[139], 32'h0059);
-                check_mem(140, DUT.memory.mem[140], 32'h0090);
-                check_mem(141, DUT.memory.mem[141], 32'h00E9);
-                check_mem(142, DUT.memory.mem[142], 32'h0179);
-                check_mem(143, DUT.memory.mem[143], 32'h0262);
-                check_mem(144, DUT.memory.mem[144], 32'h03DB);
-                check_mem(145, DUT.memory.mem[145], 32'h063D);
-                check_mem(146, DUT.memory.mem[146], 32'h0A18);
-                check_mem(147, DUT.memory.mem[147], 32'h1055);
-                check_mem(158, DUT.memory.mem[158], 32'h0001);
+                check_mem(128, DUT.data_mem.mem[128],  32'h0000);
+                check_mem(129, DUT.data_mem.mem[129],  32'h0001);
+                check_mem(130, DUT.data_mem.mem[130],  32'h0001);
+                check_mem(131, DUT.data_mem.mem[131],  32'h0002);
+                check_mem(132, DUT.data_mem.mem[132],  32'h0003);
+                check_mem(133, DUT.data_mem.mem[133],  32'h0005);
+                check_mem(134, DUT.data_mem.mem[134],  32'h0008);
+                check_mem(135, DUT.data_mem.mem[135],  32'h000D);
+                check_mem(136, DUT.data_mem.mem[136],  32'h0015);
+                check_mem(137, DUT.data_mem.mem[137],  32'h0022);
+                check_mem(138, DUT.data_mem.mem[138], 32'h0037);
+                check_mem(139, DUT.data_mem.mem[139], 32'h0059);
+                check_mem(140, DUT.data_mem.mem[140], 32'h0090);
+                check_mem(141, DUT.data_mem.mem[141], 32'h00E9);
+                check_mem(142, DUT.data_mem.mem[142], 32'h0179);
+                check_mem(143, DUT.data_mem.mem[143], 32'h0262);
+                check_mem(144, DUT.data_mem.mem[144], 32'h03DB);
+                check_mem(145, DUT.data_mem.mem[145], 32'h063D);
+                check_mem(146, DUT.data_mem.mem[146], 32'h0A18);
+                check_mem(147, DUT.data_mem.mem[147], 32'h1055);
+                check_mem(158, DUT.data_mem.mem[158], 32'h0001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(159, DUT.memory.mem[159], 32'h1055);
+                check_mem(159, DUT.data_mem.mem[159], 32'h1055);
                 $display({`ANSI_BLU, "   Stores final Fibonacci value (fib(20) = 4181)", `ANSI_RST});
             end
     endtask
@@ -622,55 +774,55 @@ module cpu_mc_tb();
                 check_reg(7, DUT.register_file.regs[7],  32'h00000001);
                 check_reg(8, DUT.register_file.regs[8],  32'h00000001);
                 check_reg(9, DUT.register_file.regs[9],  32'h00000001);
-                check_mem(128, DUT.memory.mem[128],  32'h00000000);
-                check_mem(129, DUT.memory.mem[129],  32'h00000001);
-                check_mem(130, DUT.memory.mem[130],  32'h00000001);
-                check_mem(131, DUT.memory.mem[131],  32'h00000002);
-                check_mem(132, DUT.memory.mem[132],  32'h00000003);
-                check_mem(133, DUT.memory.mem[133],  32'h00000005);
-                check_mem(134, DUT.memory.mem[134],  32'h00000008);
-                check_mem(135, DUT.memory.mem[135],  32'h0000000D);
-                check_mem(136, DUT.memory.mem[136],  32'h00000015);
-                check_mem(137, DUT.memory.mem[137],  32'h00000022);
-                check_mem(138, DUT.memory.mem[138], 32'h00000037);
-                check_mem(139, DUT.memory.mem[139], 32'h00000059);
-                check_mem(140, DUT.memory.mem[140], 32'h00000090);
-                check_mem(141, DUT.memory.mem[141], 32'h000000E9);
-                check_mem(142, DUT.memory.mem[142], 32'h00000179);
-                check_mem(143, DUT.memory.mem[143], 32'h00000262);
-                check_mem(144, DUT.memory.mem[144], 32'h000003DB);
-                check_mem(145, DUT.memory.mem[145], 32'h0000063D);
-                check_mem(146, DUT.memory.mem[146], 32'h00000A18);
-                check_mem(147, DUT.memory.mem[147], 32'h00001055);
-                check_mem(148, DUT.memory.mem[148], 32'h00001A6D);
-                check_mem(149, DUT.memory.mem[149], 32'h00002AC2);
-                check_mem(150, DUT.memory.mem[150], 32'h0000452F);
-                check_mem(151, DUT.memory.mem[151], 32'h00006FF1);
-                check_mem(152, DUT.memory.mem[152], 32'h0000B520);
-                check_mem(153, DUT.memory.mem[153], 32'h00012511);
-                check_mem(154, DUT.memory.mem[154], 32'h0001DA31);
-                check_mem(155, DUT.memory.mem[155], 32'h0002FF42);
-                check_mem(156, DUT.memory.mem[156], 32'h0004D973);
-                check_mem(157, DUT.memory.mem[157], 32'h0007D8B5);
-                check_mem(161, DUT.memory.mem[161], 32'h0035C7E2);
-                check_mem(162, DUT.memory.mem[162], 32'h005704E7);
-                check_mem(163, DUT.memory.mem[163], 32'h008CCCC9);
-                check_mem(164, DUT.memory.mem[164], 32'h00E3D1B0);
-                check_mem(165, DUT.memory.mem[165], 32'h01709E79);
-                check_mem(166, DUT.memory.mem[166], 32'h02547029);
-                check_mem(167, DUT.memory.mem[167], 32'h03C50EA2);
-                check_mem(168, DUT.memory.mem[168], 32'h06197ECB);
-                check_mem(169, DUT.memory.mem[169], 32'h09DE8D6D);
-                check_mem(170, DUT.memory.mem[170], 32'h0FF80C38);
-                check_mem(171, DUT.memory.mem[171], 32'h19D699A5);
-                check_mem(172, DUT.memory.mem[172], 32'h29CEA5DD);
-                check_mem(173, DUT.memory.mem[173], 32'h43A53F82);
-                check_mem(174, DUT.memory.mem[174], 32'h6D73E55F);
-                check_mem(158, DUT.memory.mem[158], 32'h00000001);
+                check_mem(128, DUT.data_mem.mem[128],  32'h00000000);
+                check_mem(129, DUT.data_mem.mem[129],  32'h00000001);
+                check_mem(130, DUT.data_mem.mem[130],  32'h00000001);
+                check_mem(131, DUT.data_mem.mem[131],  32'h00000002);
+                check_mem(132, DUT.data_mem.mem[132],  32'h00000003);
+                check_mem(133, DUT.data_mem.mem[133],  32'h00000005);
+                check_mem(134, DUT.data_mem.mem[134],  32'h00000008);
+                check_mem(135, DUT.data_mem.mem[135],  32'h0000000D);
+                check_mem(136, DUT.data_mem.mem[136],  32'h00000015);
+                check_mem(137, DUT.data_mem.mem[137],  32'h00000022);
+                check_mem(138, DUT.data_mem.mem[138], 32'h00000037);
+                check_mem(139, DUT.data_mem.mem[139], 32'h00000059);
+                check_mem(140, DUT.data_mem.mem[140], 32'h00000090);
+                check_mem(141, DUT.data_mem.mem[141], 32'h000000E9);
+                check_mem(142, DUT.data_mem.mem[142], 32'h00000179);
+                check_mem(143, DUT.data_mem.mem[143], 32'h00000262);
+                check_mem(144, DUT.data_mem.mem[144], 32'h000003DB);
+                check_mem(145, DUT.data_mem.mem[145], 32'h0000063D);
+                check_mem(146, DUT.data_mem.mem[146], 32'h00000A18);
+                check_mem(147, DUT.data_mem.mem[147], 32'h00001055);
+                check_mem(148, DUT.data_mem.mem[148], 32'h00001A6D);
+                check_mem(149, DUT.data_mem.mem[149], 32'h00002AC2);
+                check_mem(150, DUT.data_mem.mem[150], 32'h0000452F);
+                check_mem(151, DUT.data_mem.mem[151], 32'h00006FF1);
+                check_mem(152, DUT.data_mem.mem[152], 32'h0000B520);
+                check_mem(153, DUT.data_mem.mem[153], 32'h00012511);
+                check_mem(154, DUT.data_mem.mem[154], 32'h0001DA31);
+                check_mem(155, DUT.data_mem.mem[155], 32'h0002FF42);
+                check_mem(156, DUT.data_mem.mem[156], 32'h0004D973);
+                check_mem(157, DUT.data_mem.mem[157], 32'h0007D8B5);
+                check_mem(161, DUT.data_mem.mem[161], 32'h0035C7E2);
+                check_mem(162, DUT.data_mem.mem[162], 32'h005704E7);
+                check_mem(163, DUT.data_mem.mem[163], 32'h008CCCC9);
+                check_mem(164, DUT.data_mem.mem[164], 32'h00E3D1B0);
+                check_mem(165, DUT.data_mem.mem[165], 32'h01709E79);
+                check_mem(166, DUT.data_mem.mem[166], 32'h02547029);
+                check_mem(167, DUT.data_mem.mem[167], 32'h03C50EA2);
+                check_mem(168, DUT.data_mem.mem[168], 32'h06197ECB);
+                check_mem(169, DUT.data_mem.mem[169], 32'h09DE8D6D);
+                check_mem(170, DUT.data_mem.mem[170], 32'h0FF80C38);
+                check_mem(171, DUT.data_mem.mem[171], 32'h19D699A5);
+                check_mem(172, DUT.data_mem.mem[172], 32'h29CEA5DD);
+                check_mem(173, DUT.data_mem.mem[173], 32'h43A53F82);
+                check_mem(174, DUT.data_mem.mem[174], 32'h6D73E55F);
+                check_mem(158, DUT.data_mem.mem[158], 32'h00000001);
                 $display({`ANSI_BLU, "   Success flag (should be 1)", `ANSI_RST});
-                check_mem(159, DUT.memory.mem[159], 32'h6D73E55F);
+                check_mem(159, DUT.data_mem.mem[159], 32'h6D73E55F);
                 $display({`ANSI_BLU, "   Last valid Fibonacci value (fib(46) = 1836311903)", `ANSI_RST});
-                check_mem(160, DUT.memory.mem[160], 32'hB11924E1);
+                check_mem(160, DUT.data_mem.mem[160], 32'hB11924E1);
                 $display({`ANSI_BLU, "   Overflow detected | value (fib(47) wrapped = 2971215073)", `ANSI_RST});
             end
         endtask
@@ -701,7 +853,7 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, " RUNNING HALT-PLACEMENT TESTS [17] ", `ANSI_RST});
             $display({`ANSI_BOLD, "------", `ANSI_RST});
             check_reg(1, DUT.register_file.regs[1], 32'd1);
-            check_mem(128, DUT.memory.mem[128], 32'd0);
+            check_mem(128, DUT.data_mem.mem[128], 32'd0);
         end
     endtask
 
@@ -718,7 +870,7 @@ module cpu_mc_tb();
             check_reg(1, DUT.register_file.regs[1], 32'd11);
             check_reg(2, DUT.register_file.regs[2], 32'd11);
             check_reg(3, DUT.register_file.regs[3], 32'd55);
-            check_mem(128, DUT.memory.mem[128], 32'd55);
+            check_mem(128, DUT.data_mem.mem[128], 32'd55);
         end
     endtask
 
@@ -732,14 +884,38 @@ module cpu_mc_tb();
             $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
             $write({`ANSI_BOLD, " RUNNING ARRAY-SUM TESTS [19] ", `ANSI_RST});
             $display({`ANSI_BOLD, "---------", `ANSI_RST});
-            check_mem(144, DUT.memory.mem[144], 32'd10);
-            check_mem(145, DUT.memory.mem[145], 32'd20);
-            check_mem(146, DUT.memory.mem[146], 32'd30);
+            check_mem(144, DUT.data_mem.mem[144], 32'd10);
+            check_mem(145, DUT.data_mem.mem[145], 32'd20);
+            check_mem(146, DUT.data_mem.mem[146], 32'd30);
             check_reg(2, DUT.register_file.regs[2], 32'd10);
             check_reg(3, DUT.register_file.regs[3], 32'd20);
             check_reg(4, DUT.register_file.regs[4], 32'd30);
             check_reg(5, DUT.register_file.regs[5], 32'd60);
-            check_mem(128, DUT.memory.mem[128], 32'd60);
+            check_mem(128, DUT.data_mem.mem[128], 32'd60);
+        end
+    endtask
+
+    //------------------------------------------------------------------------------
+    // mipstest()
+    // Test goal:
+    //   - Canonical MIPS sanity test from Harris & Harris.
+    //   - Exercises add/sub/and/or/slt/addi/lw/sw/beq/j control-flow sequence.
+    // PASS criteria:
+    //   - Final architectural state matches the reference program.
+    //   - Program writes loaded value (from mem[80]) to data memory address 84.
+    //------------------------------------------------------------------------------
+    task automatic mipstest;
+        begin
+            $write({`ANSI_BOLD, "-----------------------", `ANSI_RST});
+            $write({`ANSI_BOLD, " RUNNING MIPS-TESTS (EXAMPLE) [20] ", `ANSI_RST});
+            $display({`ANSI_BOLD, "---------", `ANSI_RST});
+            check_reg(2, DUT.register_file.regs[2], -32'sd4);
+            check_reg(3, DUT.register_file.regs[3], 32'd12);
+            check_reg(4, DUT.register_file.regs[4], 32'd1);
+            check_reg(5, DUT.register_file.regs[5], 32'd0);
+            check_reg(7, DUT.register_file.regs[7], -32'sd4);
+            check_mem(20, DUT.data_mem.mem[20], -32'sd4);
+            check_mem(21, DUT.data_mem.mem[21], 32'd0);
         end
     endtask
 
@@ -782,18 +958,18 @@ module cpu_mc_tb();
             check_reg(28, DUT.register_file.regs[28], 32'hffffffff);
             check_reg(29, DUT.register_file.regs[29], 32'd0);
             check_reg(30, DUT.register_file.regs[30], 32'd0);
-            check_mem(128, DUT.memory.mem[128], 32'd1);
-            check_mem(129, DUT.memory.mem[129], 32'd3);
-            check_mem(130, DUT.memory.mem[130], 32'd6);
-            check_mem(131, DUT.memory.mem[131], 32'd10);
-            check_mem(132, DUT.memory.mem[132], 32'd15);
-            check_mem(133, DUT.memory.mem[133], 32'hffffffff);
-            check_mem(134, DUT.memory.mem[134], 32'd0);
+            check_mem(128, DUT.data_mem.mem[128], 32'd1);
+            check_mem(129, DUT.data_mem.mem[129], 32'd3);
+            check_mem(130, DUT.data_mem.mem[130], 32'd6);
+            check_mem(131, DUT.data_mem.mem[131], 32'd10);
+            check_mem(132, DUT.data_mem.mem[132], 32'd15);
+            check_mem(133, DUT.data_mem.mem[133], 32'hffffffff);
+            check_mem(134, DUT.data_mem.mem[134], 32'd0);
         end
     endtask
 
     //==============================================================================
-    // 11) Test sequencer (stimulus + termination + checking)
+    // 12) Test sequencer (stimulus + termination + checking)
     //==============================================================================
 
     //------------------------------------------------------------------------------
@@ -812,7 +988,10 @@ module cpu_mc_tb();
     //------------------------------------------------------------------------------
     task automatic run_test(input integer id);
         integer i;
+        bit halt_seen;
         begin
+            halt_seen = 1'b0;
+
             // 1) Reset asserted
             rst = 1'b1;
             $display("\033[1;34m-> Reset asserted @%0t\033[0m", $time);
@@ -833,17 +1012,21 @@ module cpu_mc_tb();
             for (i = 0; i < max_cycles; i = i + 1) begin
                 @(posedge clk);
                 if (DUT.halt) begin
-                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.pc);
+                    halt_seen = 1'b1;
+                    $display("\033[1;34m-> HALT detected @%0t (PC=0x%08h)\033[0m", $time, DUT.F_PC);
                     i = max_cycles; // Icarus workaround to break loop
                 end
             end
-            
+
             // Enforce termination condition
-            if (DUT.halt != 1'b1) begin
+            if (!halt_seen) begin
                 $fatal(1,
                        "\033[1;31m\nTIMEOUT: HALT not reached after %0d max_cycles (PC=0x%08h) @%0t\033[0m",
-                       max_cycles, DUT.pc, $time);
+                       max_cycles, DUT.F_PC, $time);
             end
+
+            // Let in-flight pipeline operations retire before final checks.
+            repeat (drain_cycles) @(posedge clk);
 
             // 5) Check results
             case (id)
@@ -866,7 +1049,8 @@ module cpu_mc_tb();
                 17: halt_placement_test();
                 18: loop_counter_test();
                 19: array_sum_test();
-                20: integration_test();
+                20: mipstest();
+                21: integration_test();
                 default: integration_test();
             endcase
 
@@ -878,7 +1062,7 @@ module cpu_mc_tb();
     endtask
     
     //==============================================================================
-    // 12) Main (entry point)
+    // 13) Main (entry point)
     //==============================================================================
     // Entry point: runs selected test (from +test=<id>) and ends simulation.
     initial begin

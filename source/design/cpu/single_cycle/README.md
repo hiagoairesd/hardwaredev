@@ -9,13 +9,13 @@ Each instruction is executed in a single clock cycle (fetch, decode, execute, me
 
 Folder: [source/design/cpu/single_cycle](.)
 
-- `cpu_sc.v`: single-cycle CPU top-level integration
-- `control_unit.v`: instruction decode and control signal generation
+- `sc_cpu.v`: single-cycle CPU top-level integration
 - `instr_mem.v`: instruction memory
-- `data_mem.v`: data memory
 - Reused common blocks from [source/design/cpu/common](../common):
   - `alu.v`
-  - `register_file.v`
+  - `control_unit.v`: shared single-cycle instruction decode and control logic
+  - `register_file.v`: shared register bank (`DATA_W` is parameterized; the current architectural organization remains 32 registers with 5-bit register addresses)
+  - `data_mem.v`: shared single-ported data memory with separate `data_in` and `data_out` buses
 
 ## Architecture Document
 
@@ -27,7 +27,7 @@ Full architectural description:
 Testbenches and test programs:
 - Folder: [source/verif/cpu/single_cycle](../../../verif/cpu/single_cycle)
 - Main files:
-  - `cpu_sc_tb.sv`
+  - `sc_cpu_tb.sv`
   - `control_unit_tb.sv`
   - `instr_mem_tb.sv`
   - `data_mem_tb.sv`
@@ -60,10 +60,10 @@ Testbenches and test programs:
 From [simu](../../../../simu):
 
 ```bash
-./simulate cpu_sc
-./simulate cpu_sc +test=1
-./simulate cpu_sc +test=1 +trace
-./simulate cpu_sc +test=1 +trace_w
+./simulate sc_cpu
+./simulate sc_cpu +test=1
+./simulate sc_cpu +test=1 +trace
+./simulate sc_cpu +test=1 +trace_w
 ```
 
 You can also run modules individually:
@@ -80,7 +80,7 @@ You can also run modules individually:
 cd ../../../../simu
 for i in {1..15}; do
   echo "Running test $i"
-  ./simulate cpu_sc +test=$i || exit 1
+  ./simulate sc_cpu +test=$i || exit 1
 done
 ```
 

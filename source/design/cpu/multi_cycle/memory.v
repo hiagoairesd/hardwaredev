@@ -3,11 +3,11 @@ module memory #(
     parameter DATA_W  = 32,
     parameter DEPTH   = 256
 )(
-    input wire                  clk,
-    input wire                   we,
-    input wire [ADDR_W-1:0]    addr,
-    input wire [DATA_W-1:0] data_in,
-    output reg [DATA_W-1:0] data_out
+    input wire               clk,
+    input wire               we,
+    input wire  [ADDR_W-1:0] addr,
+    input wire  [DATA_W-1:0] data_in,
+    output wire [DATA_W-1:0] data_out
 );
     reg [DATA_W-1:0] mem [0:DEPTH-1];
     

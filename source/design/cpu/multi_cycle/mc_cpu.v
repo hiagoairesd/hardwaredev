@@ -1,7 +1,8 @@
-module cpu_mc #(
+module mc_cpu #(
     parameter DATA_W = 32,
     parameter ADDR_W = 32,
-    parameter MEM_DEPTH = 256
+    parameter MEM_DEPTH = 256,
+    parameter RF_DEPTH = 32
 )(
     input wire clk,
     input wire rst,
@@ -48,6 +49,7 @@ module cpu_mc #(
         .data_in    (mem_data_in),
         .data_out   (mem_out)
     );
+`ifndef SYNTHESIS
     // ---------------------------------------------------------
     // 1. MEMORY INITIALIZATION CHECK (Startup)
     // ---------------------------------------------------------
@@ -81,6 +83,7 @@ module cpu_mc #(
             ));
         end
     end
+`endif
 //==============================================================================
 // 3) Instruction fields + immediate extension
 //==============================================================================
@@ -104,7 +107,7 @@ module cpu_mc #(
     wire [1:0] aluSrcB, PCSrc;
     wire       IRWrite, PCWrite;
 
-    control_unit #(
+    mc_control_unit #(
         .INSTR_W(DATA_W)
     ) control_unit (
         .clk            (clk),
@@ -137,7 +140,9 @@ module cpu_mc #(
     wire [DATA_W-1:0] rf_data_out2;
     wire [DATA_W-1:0] rf_wdata;
 
-    register_file register_file (
+    register_file #(
+        .DATA_W     (DATA_W)
+    ) register_file (
         .clk        (clk),
         .rst        (rst),
         .we3        (regWrite),
@@ -167,8 +172,8 @@ module cpu_mc #(
 // ALU operand B:
 //   - aluSrcB=0 selects rt data
 //   - aluSrcB=1 selects 4
-//   - aluSrcB=2 selects imm_ext
-//   - aluSrcB=3 selects imm_ext << 2
+//   - aluSrcB=2 selects imm_ext for I-type ALU ops
+//   - aluSrcB=3 selects imm_ext << 2 for branch target calculation
     wire [DATA_W-1:0] alu_b =
         (aluSrcB == 2'b00) ? rf_regB                    :
         (aluSrcB == 2'b01) ? {{(DATA_W-3){1'b0}}, 3'd4} :

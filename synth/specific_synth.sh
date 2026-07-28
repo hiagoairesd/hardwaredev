@@ -36,12 +36,19 @@ if [[ ! -f "$SKY130_LIB_PATH" ]]; then
 fi
 
 LIB_FILE="$SKY130_LIB_PATH"
+GENERIC_NETLIST="${DUT}_generic_synth.v"
 OUT_VERILOG="${DUT}_specific_synth.v"
 SCRIPT_FILE="synth.ys"
 
+# Ensure the generic netlist exists before the technology-mapped pass.
+if [[ ! -f "$GENERIC_NETLIST" ]]; then
+  echo -e "${BLUE}Info: $GENERIC_NETLIST not found. Running generic synthesis first...${NC}"
+  "$SCRIPT_DIR/generic_synth.sh" "$DUT"
+fi
+
 # Generate Yosys script file
 cat <<EOF > "$SCRIPT_FILE"
-read_verilog ${DUT}_generic_synth.v
+read_verilog $GENERIC_NETLIST
 hierarchy -top $DUT
 synth -top $DUT
 dfflibmap -liberty $LIB_FILE

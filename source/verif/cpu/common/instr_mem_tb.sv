@@ -30,7 +30,7 @@ module instr_mem_tb();
     endtask
 
     initial begin
-        $readmemh("../source/verif/cpu/single_cycle/assembly/basic_swlw.hex", DUT.mem);
+        $readmemh("../source/verif/cpu/single_cycle/assembly/basic_swlw.hex", DUT.ROM);
         addr_in_tb = 8'd0;   #10 check(32'h2001002a);
         addr_in_tb = 8'd1;   #10 check(32'hac010000);
         addr_in_tb = 8'd2;   #10 check(32'h8c020000);

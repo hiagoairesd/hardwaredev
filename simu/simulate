@@ -10,27 +10,37 @@ DESIGN="$ROOT/design"
 CPU_DESIGN="$DESIGN/cpu"
 VERIF="$ROOT/verif"
 
+# Prefer tools from PATH, but support user-local installs without sudo.
+if ! command -v iverilog >/dev/null 2>&1 && [[ -x "$HOME/.local/bin/iverilog" ]]; then
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <dut> [single_cycle|multi_cycle] [vvp_args...]" >&2
-  echo "Aliases: <dut>_mc, <dut>_sc, <dut>_multi_cycle, <dut>_single_cycle" >&2
+  echo "Aliases: mc_<dut>, sc_<dut>, multi_cycle_<dut>, single_cycle_<dut>" >&2
   exit 1
 fi
 dut="$1"
 shift
 
 alias_variant=""
-if [[ "$dut" =~ ^(.+)_mc$ ]]; then
-  dut="${BASH_REMATCH[1]}"
-  alias_variant="multi_cycle"
-elif [[ "$dut" =~ ^(.+)_sc$ ]]; then
-  dut="${BASH_REMATCH[1]}"
-  alias_variant="single_cycle"
-elif [[ "$dut" =~ ^(.+)_multi_cycle$ ]]; then
-  dut="${BASH_REMATCH[1]}"
-  alias_variant="multi_cycle"
-elif [[ "$dut" =~ ^(.+)_single_cycle$ ]]; then
-  dut="${BASH_REMATCH[1]}"
-  alias_variant="single_cycle"
+# Apply variant prefix alias only when the full DUT name has no matching RTL file,
+# so that top-level modules like sc_cpu / mc_cpu are never accidentally decomposed.
+_alias_exact="$(find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
+if [[ -z "$_alias_exact" ]]; then
+  if [[ "$dut" =~ ^mc_(.+)$ ]]; then
+    dut="${BASH_REMATCH[1]}"
+    alias_variant="multi_cycle"
+  elif [[ "$dut" =~ ^sc_(.+)$ ]]; then
+    dut="${BASH_REMATCH[1]}"
+    alias_variant="single_cycle"
+  elif [[ "$dut" =~ ^multi_cycle_(.+)$ ]]; then
+    dut="${BASH_REMATCH[1]}"
+    alias_variant="multi_cycle"
+  elif [[ "$dut" =~ ^single_cycle_(.+)$ ]]; then
+    dut="${BASH_REMATCH[1]}"
+    alias_variant="single_cycle"
+  fi
 fi
 
 variant="$alias_variant"
@@ -48,9 +58,9 @@ fi
 
 if [[ -n "$variant" ]]; then
   if [[ -n "$variant_short" ]]; then
-    out="${dut}_${variant_short}.out"
+    out="${variant_short}_${dut}.out"
   else
-    out="${dut}_${variant}.out"
+    out="${variant}_${dut}.out"
   fi
 else
   out="${dut}.out"
@@ -58,10 +68,10 @@ fi
 if [[ -n "$variant" ]]; then
   tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_tb.sv" -print -quit)"
   if [[ -z "$tb" ]]; then
-    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_${variant}_tb.sv" -print -quit)"
+    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${variant}_${dut}_tb.sv" -print -quit)"
   fi
   if [[ -z "$tb" && -n "$variant_short" ]]; then
-    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${dut}_${variant_short}_tb.sv" -print -quit)"
+    tb="$(find "$VERIF" -type f -path "*/cpu/${variant}/${variant_short}_${dut}_tb.sv" -print -quit)"
   fi
 else
   tb="$(find "$VERIF" -type f -name "${dut}_tb.sv" -print -quit)"
@@ -74,10 +84,10 @@ echo "TB  : $tb"
 if [[ -n "$variant" ]]; then
   rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
   if [[ -z "$rtl" ]]; then
-    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}_${variant}.v" -o -name "${dut}_${variant}.sv" \) -print -quit)"
+    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${variant}_${dut}.v" -o -name "${variant}_${dut}.sv" \) -print -quit)"
   fi
   if [[ -z "$rtl" && -n "$variant_short" ]]; then
-    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${dut}_${variant_short}.v" -o -name "${dut}_${variant_short}.sv" \) -print -quit)"
+    rtl="$(find "$DESIGN" -type f -path "*/cpu/${variant}/*" \( -name "${variant_short}_${dut}.v" -o -name "${variant_short}_${dut}.sv" \) -print -quit)"
   fi
 else
   rtl="$(find "$DESIGN" -type f \( -name "${dut}.v" -o -name "${dut}.sv" \) -print -quit)"
@@ -130,8 +140,23 @@ for common_dir in "${common_dirs[@]}"; do
   fi
 done
 
+iverilog_bin="$(command -v iverilog || true)"
+vvp_bin="$(command -v vvp || true)"
+
+if [[ -z "$iverilog_bin" ]]; then
+  echo "ERROR: iverilog not found in PATH." >&2
+  echo "Install Icarus Verilog or add it to PATH." >&2
+  exit 127
+fi
+
+if [[ -z "$vvp_bin" ]]; then
+  echo "ERROR: vvp not found in PATH." >&2
+  echo "Install Icarus Verilog runtime or add it to PATH." >&2
+  exit 127
+fi
+
 iverilog_cmd=(
-  iverilog -g2012 -o "$out"
+  "$iverilog_bin" -g2012 -o "$out"
   -y "$CPU_DESIGN"
   -y "$DESIGN"
   -y "$rtl_dir"
@@ -149,7 +174,7 @@ echo "###############################################################"
 echo "### Running Simulation... #####################################"
 echo "###############################################################"
 
-vvp "$out" "$@" 2>&1 | \
+"$vvp_bin" "$out" "$@" 2>&1 | \
   grep -v "VCD warning" | \
   grep -v "Not enough words in the file"
 

@@ -1,19 +1,19 @@
 module control_unit #(
     parameter INSTR_W = 32
 )(
-    input wire  [INSTR_W-1:0] instr,            // Current instruction
-    input wire        aluOut_is_zero,   // ALU output zero flag for branch decisions
-    input wire        signed_less,      // ALU output signed less-than flag for BLT instruction
+    input wire  [INSTR_W-1:0] instr,    // Current instruction
     output wire [2:0] aluControl,       // ALU control signal
     output wire       regWrite,         // Register file write enable
     output wire       regDst,           // Register destination select (0=rt, 1=rd)
     output wire       aluSrc,           // ALU source select (0=register, 1=immediate)
-    output wire       take_branch,      // Branch taken signal for BEQ/BNE/BLT
     output wire       memWrite,         // Memory write enable for SW instruction
     output wire       memtoReg,         // Memory to register select (0=memory, 1=ALU)
     output wire       jump,             // Jump signal for J instruction
     output wire       is_shift,         // Shift signal for SLL/SRL instructions
     output wire       imm_is_zext,      // Immediate zero-extension signal
+    output reg        is_beq,           // BEQ instruction flag
+    output reg        is_bne,           // BNE instruction flag
+    output reg        is_blt,           // BLT instruction flag
     output reg        halt              // Halt signal
 );
     //==================================================================================
@@ -36,6 +36,9 @@ module control_unit #(
 
     always @* begin
         halt = 1'b0;
+        is_beq = 1'b0;
+        is_bne = 1'b0;
+        is_blt = 1'b0;
         
         case (opcode) 
             OP_RTYPE: begin
@@ -52,9 +55,18 @@ module control_unit #(
             end
             OP_LW  : word = 9'b101010010;
             OP_SW  : word = 9'b001010100;
-            OP_BEQ : word = 9'b000110000;
-            OP_BNE : word = 9'b000110000;
-            OP_BLT : word = 9'b000110000;
+            OP_BEQ : begin
+                word = 9'b000110000;
+                is_beq = 1'b1;
+            end
+            OP_BNE : begin
+                word = 9'b000110000;
+                is_bne = 1'b1;
+            end
+            OP_BLT : begin
+                word = 9'b000110000;
+                is_blt = 1'b1;
+            end
             OP_ADDI: word = 9'b101010000;
             OP_ORI : word = 9'b101001000;
             OP_JUMP: word = 9'b000000001;
@@ -70,30 +82,17 @@ module control_unit #(
 
     assign {regWrite, regDst, aluSrc, aluControl, memWrite, memtoReg, jump} = word;
 
-    //============================================================================================
-    // 3) Branch handling: determine if we should take the branch based on opcode and ALU outputs
-    //============================================================================================
-    //   - is_bne is true for BNE opcode (000101)
-    //   - is_blt is true for BLT opcode (000110)
-    //   - is_beq is true for BEQ opcode (000100)
-    //   - is_zero comes from ALU compare (typically subtraction result == 0)
-    //   - For BEQ: take_branch when is_zero==1
-    //   - For BNE: take_branch when is_zero==0
-    //   - For BLT: take_branch when signed_less==1
-    wire is_beq = (opcode == OP_BEQ);
-    wire is_bne = (opcode == OP_BNE);
-    wire is_blt = (opcode == OP_BLT);
-
-    assign take_branch = (is_beq && aluOut_is_zero ) |
-                         (is_bne && ~aluOut_is_zero) |
-                         (is_blt && signed_less);
-
     //====================================================================================================================================
-    // 4) Special case handling for shift instructions: determine if current instruction is a shift and adjust control signals accordingly
+    // 3) Special case handling for shift instructions: determine if current instruction is a shift and adjust control signals accordingly
     //====================================================================================================================================
 
     assign is_shift = (opcode == OP_RTYPE) &
                       (funct  == FNCT_SLL  | funct == FNCT_SRL);
+
+    //====================================================================================================================================
+    // 4) Branch instruction detection
+    //====================================================================================================================================
+
     // For shift instructions, we need to use the shamt field as ALU input instead of the register value. 
     // This requires a special case in the control logic to select the correct ALU input.
     // Immediate extension policy:

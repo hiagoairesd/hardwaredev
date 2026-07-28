@@ -26,7 +26,7 @@ This repository contains RTL design, verification and synthesis flows for a MIPS
 
 The project is organized in three tracks:
 
-- **CPU designs** (`source/design/cpu/`): single-cycle and multi-cycle architectures.
+- **CPU designs** (`source/design/cpu/`): single-cycle, multi-cycle, and pipelined architectures.
 - **Practice modules** (`source/design/practices/`): reusable and educational digital design blocks.
 - **Verification** (`source/verif/`): unit and integration testbenches, plus assembly test programs.
 
@@ -54,28 +54,32 @@ hardwaredev/
 │
 ├── simu/                            # Simulation workspace
 │   ├── simulate                     # Unified simulation runner
-│   ├── simu.tcl                     # Legacy TCL script
-│   ├── cpu_mc.vcd                   # Waveform database (generated)
+│   ├── mc_cpu.vcd                   # Waveform database (generated)
 │   └── *.vcd                        # Other generated waveforms
 │
 ├── source/                          # Design and verification source
 │   ├── design/                      # RTL design files
 │   │   ├── cpu/                     # CPU designs
-│   │   │   ├── common/              # Shared modules (ALU, register_file)
+│   │   │   ├── common/              # Shared modules used across CPU variants
 │   │   │   │   ├── alu.v
+│   │   │   │   ├── control_unit.v
+│   │   │   │   ├── data_mem.v
+│   │   │   │   ├── instr_mem.v
 │   │   │   │   └── register_file.v
 │   │   │   ├── single_cycle/        # Single-cycle CPU architecture
 │   │   │   │   ├── README.md        # Single-cycle documentation
-│   │   │   │   ├── cpu_sc.v
-│   │   │   │   ├── control_unit.v
-│   │   │   │   ├── data_mem.v       # Data memory
-│   │   │   │   ├── instr_mem.v      # Instruction memory
+│   │   │   │   ├── sc_cpu.v
+│   │   │   │   └── ISA/
+│   │   │   │       └── ARCHITECTURE.md
+│   │   │   ├── pipelined/           # Pipelined CPU architecture
+│   │   │   │   ├── hazard_unit.v
+│   │   │   │   ├── pp_cpu.v
 │   │   │   │   └── ISA/
 │   │   │   │       └── ARCHITECTURE.md
 │   │   │   └── multi_cycle/         # Multi-cycle CPU architecture
 │   │   │       ├── README.md        # Multi-cycle documentation
-│   │   │       ├── cpu_mc.v
-│   │   │       ├── control_unit.v
+│   │   │       ├── mc_cpu.v
+│   │   │       ├── mc_control_unit.v
 │   │   │       ├── memory.v         # Unified memory
 │   │   │       └── ISA/
 │   │   │           └── ARCHITECTURE.md
@@ -101,17 +105,22 @@ hardwaredev/
 │       ├── cpu/
 │       │   ├── common/              # Shared module testbenches
 │       │   │   ├── alu_tb.sv
-│       │   │   └── register_file_tb.sv
-│       │   ├── single_cycle/        # Single-cycle CPU testbenches
-│       │   │   ├── cpu_sc_tb.sv
 │       │   │   ├── control_unit_tb.sv
 │       │   │   ├── data_mem_tb.sv
 │       │   │   ├── instr_mem_tb.sv
+│       │   │   └── register_file_tb.sv
+│       │   ├── single_cycle/        # Single-cycle CPU testbenches
+│       │   │   ├── sc_cpu_tb.sv
 │       │   │   ├── README.md
 │       │   │   └── assembly/        # Assembly test programs
+│       │   ├── pipelined/           # Pipelined CPU testbenches
+│       │   │   ├── pp_cpu_tb.sv
+│       │   │   ├── hazard_unit_tb.sv
+│       │   │   ├── README.md
+│       │   │   └── assembly/        # Pipeline-specific assembly programs (mipstest.hex)
 │       │   └── multi_cycle/         # Multi-cycle CPU testbenches
-│       │       ├── cpu_mc_tb.sv
-│       │       ├── control_unit_tb.sv
+│       │       ├── mc_cpu_tb.sv
+│       │       ├── mc_control_unit_tb.sv
 │       │       ├── memory_tb.sv
 │       │       ├── README.md
 │       │       └── assembly/        # Assembly test programs
@@ -133,18 +142,22 @@ hardwaredev/
 
 ### 1) CPU designs (`source/design/cpu/`)
 
-- `common/`: Shared modules (ALU, register file) used by both CPU variants
+- `common/`: Shared modules used across CPU variants
   - `alu.v` - Arithmetic/Logic Unit
+  - `control_unit.v` - Single-cycle/common control unit
+  - `data_mem.v` - Data memory module (single-cycle/common)
+  - `instr_mem.v` - Instruction memory module (single-cycle/common)
   - `register_file.v` - Register bank
 - `single_cycle/`: Single-cycle CPU architecture (1 instruction per clock cycle)
-  - `cpu_sc.v` - Top-level module
-  - `control_unit.v` - Control logic
-  - `data_mem.v` - Data memory (separate)
-  - `instr_mem.v` - Instruction memory (separate)
+  - `sc_cpu.v` - Top-level module
   - `ISA/ARCHITECTURE.md` - Instruction set and control signal documentation
+- `pipelined/`: Pipelined CPU architecture (5-stage: Fetch/Decode/Execute/Memory/Writeback)
+  - `pp_cpu.v` - Top-level pipelined CPU module
+  - `hazard_unit.v` - Hazard detection/control logic (forwarding, stalls, flushes)
+  - `ISA/ARCHITECTURE.md` - Pipeline stages, hazard unit, and instruction set documentation
 - `multi_cycle/`: Multi-cycle CPU architecture (variable cycles per instruction)
-  - `cpu_mc.v` - Top-level module
-  - `control_unit.v` - FSM-based control logic
+  - `mc_cpu.v` - Top-level module
+  - `mc_control_unit.v` - FSM-based control logic
   - `memory.v` - Unified memory (shared data/instructions)
   - `ISA/ARCHITECTURE.md` - Instruction set and FSM state documentation
 
@@ -163,6 +176,7 @@ Standalone RTL exercises and utility circuits for digital design learning:
 Testbenches and assembly test programs organized by module:
 - `cpu/common/` - Testbenches for shared modules (ALU, register file)
 - `cpu/single_cycle/` - Single-cycle CPU testbenches and assembly programs
+- `cpu/pipelined/` - Pipelined CPU testbench (`pp_cpu_tb.sv`), standalone hazard unit testbench (`hazard_unit_tb.sv`), and pipeline-specific assembly programs
 - `cpu/multi_cycle/` - Multi-cycle CPU testbenches and assembly programs
 - `practices/` - Testbenches for practice modules
 
@@ -177,6 +191,8 @@ Only CPU-specific behavior and test details are documented in dedicated READMEs:
 - **Multi-cycle CPU**: `source/design/cpu/multi_cycle/README.md`
 - **Multi-cycle architecture**: `source/design/cpu/multi_cycle/ISA/ARCHITECTURE.md`
 - **Multi-cycle verification guide**: `source/verif/cpu/multi_cycle/README.md`
+- **Pipelined architecture**: `source/design/cpu/pipelined/ISA/ARCHITECTURE.md`
+- **Pipelined verification guide**: `source/verif/cpu/pipelined/README.md`
 
 ---
 
@@ -200,7 +216,7 @@ For Sky130 technology mapping, install Sky130 PDK/liberty files in your machine.
 ### 2) Clone repository
 
 ```bash
-git clone https://github.com/hiagoairesd/hardwaredev.git
+git clone https://github.com/hiagoairesd/hardware-development.git
 cd hardwaredev
 ```
 
@@ -226,8 +242,10 @@ cd simu
 Examples:
 
 ```bash
-./simulate cpu_sc
-./simulate cpu_mc
+./simulate sc_cpu
+./simulate mc_cpu
+./simulate pp_cpu
+./simulate hazard_unit
 ./simulate alu
 ./simulate control_unit
 ```
@@ -235,9 +253,12 @@ Examples:
 Run with test selector / runtime args:
 
 ```bash
-./simulate cpu_sc +test=1
-./simulate cpu_mc +test=2 +trace_w
+./simulate sc_cpu +test=1
+./simulate mc_cpu +test=2 +trace_w
+./simulate pp_cpu +test=6 +trace_m +trace_h
 ```
+
+The pipelined CPU testbench (`pp_cpu_tb.sv`) adds two trace modes on top of the common `+trace`/`+trace_w`: `+trace_m` (pipe diagram — which PC occupies each of F/D/E/M/W per cycle) and `+trace_h` (hazard trace — stall/flush/forward decisions from `hazard_unit`). See `source/verif/cpu/pipelined/README.md` for details.
 
 ### Waveforms
 
@@ -429,6 +450,7 @@ This repository has three testing scopes:
 1. **CPU tests** (architecture-specific):
    - Single-cycle: `source/verif/cpu/single_cycle/`
    - Multi-cycle: `source/verif/cpu/multi_cycle/`
+   - Pipelined: `source/verif/cpu/pipelined/` (CPU-level `pp_cpu_tb.sv` plus standalone `hazard_unit_tb.sv`)
 2. **Common CPU blocks**: `source/verif/cpu/common/`
 3. **Practice modules**: `source/verif/practices/`
 
@@ -500,7 +522,6 @@ For CPU-specific test cases, IDs and expected results, see each CPU README.
 | File               | Description                |
 |--------------------|----------------------------|
 | `simulate`         | Unified simulation runner  |
-| `simu.tcl`         | Legacy TCL script          |
 
 ### Synthesis scripts (`synth/`)
 
@@ -583,5 +604,5 @@ Part of CVA Silicon Technologies course project.
 
 ---
 
-**Last Updated:** March 26, 2026  
+**Last Updated:** July 26, 2026
 **Status:** Active Development

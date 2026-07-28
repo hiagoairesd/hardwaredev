@@ -3,14 +3,15 @@
 ## Overview
 
 Implementation of a 32-bit MIPS-like CPU with FSM-based multi-cycle control.
-Instructions are split across multiple states, reusing the ALU and memory across different cycles.
+Instructions are split across multiple states, reusing the ALU and memory over time across different cycles.
+In this design, memory is implemented by a dedicated local module: `memory.v` in this folder.
 
 ## Design Files
 
 Folder: [source/design/cpu/multi_cycle](.)
 
-- `cpu_mc.v`: multi-cycle CPU top-level integration
-- `control_unit.v`: FSM-based control unit
+- `mc_cpu.v`: multi-cycle CPU top-level integration
+- `mc_control_unit.v`: FSM-based control unit
 - `memory.v`: unified memory (instruction + data)
 - Reused common blocks from [source/design/cpu/common](../common):
   - `alu.v`
@@ -26,7 +27,7 @@ Full architectural description:
 Testbenches and test programs:
 - Folder: [source/verif/cpu/multi_cycle](../../../verif/cpu/multi_cycle)
 - Main files:
-  - `cpu_mc_tb.sv`
+  - `mc_cpu_tb.sv`
   - `control_unit_tb.sv`
   - `memory_tb.sv`
   - `assembly/`
@@ -63,17 +64,17 @@ Testbenches and test programs:
 From [simu](../../../../simu):
 
 ```bash
-./simulate cpu_mc
-./simulate cpu_mc +test=1
-./simulate cpu_mc +test=1 +trace
-./simulate cpu_mc +test=1 +trace_w
+./simulate mc_cpu
+./simulate mc_cpu +test=1
+./simulate mc_cpu +test=1 +trace
+./simulate mc_cpu +test=1 +trace_w
 ```
 
 You can also run modules individually:
 
 ```bash
 ./simulate alu
-./simulate control_unit_mc
+./simulate mc_control_unit
 ./simulate register_file
 ./simulate memory
 ```
@@ -84,7 +85,7 @@ You can also run modules individually:
 cd ../../../../simu
 for i in {1..20}; do
   echo "Running test $i"
-  ./simulate cpu_mc +test=$i || exit 1
+  ./simulate mc_cpu +test=$i || exit 1
 done
 ```
 

@@ -1,4 +1,4 @@
-module control_unit_tb();
+module mc_control_unit_tb();
     localparam INSTR_W = 32;
     localparam OP_RTYPE = 6'b000000;
     localparam OP_LW    = 6'b100011;
@@ -6,11 +6,18 @@ module control_unit_tb();
     localparam OP_BEQ   = 6'b000100;
     localparam OP_BLT   = 6'b000110;
     localparam OP_ORI   = 6'b001101;
+    localparam OP_ANDI  = 6'b001100;
+    localparam OP_ADDI  = 6'b001000;
     localparam OP_JUMP  = 6'b000010;
     localparam OP_HALT  = 6'b111111;
 
     localparam FNCT_ADD = 6'b100000;
+    localparam FNCT_SUB = 6'b100010;
+    localparam FNCT_AND = 6'b100100;
+    localparam FNCT_OR  = 6'b100101;
+    localparam FNCT_SLT = 6'b101010;
     localparam FNCT_SLL = 6'b000000;
+    localparam FNCT_SRL = 6'b000010;
 
     reg clk, rst;
     reg [INSTR_W-1:0] instr;
@@ -123,7 +130,7 @@ module control_unit_tb();
         end
     endtask
 
-    control_unit #(
+    mc_control_unit #(
         .INSTR_W(INSTR_W)
     ) DUT (
         .clk            (clk),
@@ -155,7 +162,7 @@ module control_unit_tb();
 
     initial begin
         $dumpfile("control_unit.vcd");
-        $dumpvars(0, control_unit_tb);
+        $dumpvars(0, mc_control_unit_tb);
     end
 
     // -----------------------------------------------------------------------
@@ -225,6 +232,78 @@ module control_unit_tb();
         end
     endtask
 
+    task test_sub;
+        begin
+            print_case("SUB (no shift)");
+            instr = enc_r(FNCT_SUB);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b00);
+            check_eq_3("aluControl",aluControl, 3'b110);
+            check_eq_1("is_shift",  is_shift,  1'b0);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_and;
+        begin
+            print_case("AND (no shift)");
+            instr = enc_r(FNCT_AND);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b00);
+            check_eq_3("aluControl",aluControl, 3'b000);
+            check_eq_1("is_shift",  is_shift,  1'b0);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_or;
+        begin
+            print_case("OR (no shift)");
+            instr = enc_r(FNCT_OR);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b00);
+            check_eq_3("aluControl",aluControl, 3'b001);
+            check_eq_1("is_shift",  is_shift,  1'b0);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_slt;
+        begin
+            print_case("SLT (no shift)");
+            instr = enc_r(FNCT_SLT);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("aluSrcA",   aluSrcA,   1'b1);
+            check_eq_2("aluSrcB",   aluSrcB,   2'b00);
+            check_eq_3("aluControl",aluControl, 3'b111);
+            check_eq_1("is_shift",  is_shift,  1'b0);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            check_eq_1("regDst",    regDst,    1'b1);
+            check_eq_1("memToReg",  memToReg,  1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
     task test_sll;
         begin
             print_case("SLL (is_shift=1)");
@@ -239,6 +318,20 @@ module control_unit_tb();
         end
     endtask
 
+    task test_srl;
+        begin
+            print_case("SRL (is_shift=1)");
+            instr = enc_r(FNCT_SRL);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE
+            check_eq_1("is_shift",  is_shift,  1'b1);
+            check_eq_3("aluControl",aluControl, 3'b100);
+            step;                                                           // ALU_WRITEBACK
+            check_eq_1("regWrite",  regWrite,  1'b1);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
     task test_ori;
         begin
             print_case("ORI (imm_is_zext=1)");
@@ -247,6 +340,36 @@ module control_unit_tb();
             step;                                                           // EXECUTE_IMM
             check_eq_1("imm_is_zext",imm_is_zext, 1'b1);
             check_eq_3("aluControl", aluControl,  3'b001);
+            step;                                                           // IMM_WRITEBACK
+            check_eq_1("regWrite",   regWrite,    1'b1);
+            check_eq_1("regDst",     regDst,      1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_andi;
+        begin
+            print_case("ANDI (imm_is_zext=1)");
+            instr = enc_i(OP_ANDI);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE_IMM
+            check_eq_1("imm_is_zext",imm_is_zext, 1'b1);
+            check_eq_3("aluControl", aluControl,  3'b000);
+            step;                                                           // IMM_WRITEBACK
+            check_eq_1("regWrite",   regWrite,    1'b1);
+            check_eq_1("regDst",     regDst,      1'b0);
+            step; expect_fetch(); print_ok();                               // FETCH
+        end
+    endtask
+
+    task test_addi;
+        begin
+            print_case("ADDI (imm_is_zext=0)");
+            instr = enc_i(OP_ADDI);
+            step; expect_decode();                                          // DECODE
+            step;                                                           // EXECUTE_IMM
+            check_eq_1("imm_is_zext",imm_is_zext, 1'b0);
+            check_eq_3("aluControl", aluControl,  3'b010);
             step;                                                           // IMM_WRITEBACK
             check_eq_1("regWrite",   regWrite,    1'b1);
             check_eq_1("regDst",     regDst,      1'b0);
@@ -337,18 +460,25 @@ module control_unit_tb();
         step; expect_fetch(); print_ok();
         rst = 1'b0;
 
-        print_section("LOAD/STORE OPERATIONS");
+        print_section("LOAD/STORE INSTRUCTIONS");
         test_lw();
         test_sw();
 
-        print_section("R-TYPE OPERATIONS");
+        print_section("R-TYPE INSTRUCTIONS");
         test_add();
+        test_sub();
+        test_and();
+        test_or();
+        test_slt();
 
-        print_section("SHIFT INSTRUCTIONS");
+        print_section("SHIFT OPERATIONS");
         test_sll();
+        test_srl();
 
         print_section("IMMEDIATE OPERATIONS");
         test_ori();
+        test_andi();
+        test_addi();
 
         print_section("BRANCH INSTRUCTIONS");
         test_beq_taken();

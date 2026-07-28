@@ -54,6 +54,24 @@ else
     NETLISTSVG_AVAILABLE=1
 fi
 
+# Best-effort Sky130 liberty auto-detection for specific synthesis.
+# This keeps the flow portable when the PDK is installed locally but .env was
+# left unset.
+if [[ -z "${SKY130_LIB_PATH:-}" ]]; then
+    for base in "$HOME/.volare" "$HOME/.ciel" /usr/share/pdk /usr/local/share/pdk /opt; do
+        [[ -d "$base" ]] || continue
+        SKY130_CANDIDATE=$(find "$base" -type f \( \
+            -name 'sky130_fd_sc_hd__tt_100C_1v80.lib' -o \
+            -name 'sky130_fd_sc_hd__tt_025C_1v80.lib' -o \
+            -name 'sky130_fd_sc_hd*.lib' \
+        \) -print -quit 2>/dev/null)
+        if [[ -n "$SKY130_CANDIDATE" ]]; then
+            export SKY130_LIB_PATH="$SKY130_CANDIDATE"
+            break
+        fi
+    done
+fi
+
 # Verify project structure
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$SCRIPT_DIR/../source"
